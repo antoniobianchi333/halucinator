@@ -2,7 +2,7 @@
 # Under the terms of Contract DE-NA0003525 with NTESS, the U.S. Government retains 
 # certain rights in this software.
 
-
+import signal
 import yaml
 from avatar2 import Avatar, QemuTarget, ARM_CORTEX_M3, TargetStates
 from avatar2.peripherals.avatar_peripheral import AvatarPeripheral
@@ -319,6 +319,19 @@ def emulate_binary(config, base_dir, target_name=None, log_basic_blocks=None,
     # TODO Change to be read from config
     qemu.set_vector_table_base(0x08000000)
     write_patch_memory(qemu)
+
+    def signal_handler(a,b):
+        #try:
+        log.info("Received Ctrl+C, shutting down.")
+        periph_server.stop()
+        avatar.stop()
+        avatar.shutdown()
+        log.info("Shutdown Complete.")
+        #except:
+        #    pass
+        quit(0)
+    
+    signal.signal(signal.SIGINT, signal_handler)
 
     # Emulate the Binary
     periph_server.start(rx_port, tx_port, qemu)

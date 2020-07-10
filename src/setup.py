@@ -32,6 +32,7 @@ setup(name='halucinator',
       packages=get_packages('halucinator'),
       entry_points ={'console_scripts': [
             'halucinator = halucinator.main:main',
+            'halucinator-rehost = halucinator.main:main',
         ]},
       requires=['avatar2',
                 'zeromq',
