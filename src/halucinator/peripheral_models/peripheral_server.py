@@ -124,6 +124,10 @@ def run_server():
     global __stop_server
     global __qemu
 
+    import traceback
+    print("***** -> BT")
+    traceback.print_stack()
+
     __stop_server = False
     __rx_socket__.setsockopt(zmq.SUBSCRIBE, b'')
 
@@ -155,7 +159,7 @@ def run_server():
     log.info("Peripheral Server Shutdown Normally")
 
 
-def stop(self):
+def stop():
     global __process
     global __stop_server
     __stop_server = True

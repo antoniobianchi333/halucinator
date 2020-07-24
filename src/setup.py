@@ -31,8 +31,9 @@ setup(name='halucinator',
       # url='https://seclab.cs.ucsb.edu',
       packages=get_packages('halucinator'),
       entry_points ={'console_scripts': [
-            'halucinator = halucinator.main:main',
-            'halucinator-rehost = halucinator.main:main',
+            'halucinator-periph = halucinator.commands.peripheral:main',
+            'halucinator-rehost = halucinator.commands.rehost:main',
+            'ghalucinator = halucinator.commands.gui:main'
         ]},
       requires=['avatar2',
                 'zeromq',

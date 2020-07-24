@@ -13,7 +13,7 @@ import pickle
 import functools
 import struct
 
-from .util.parse_symbol_tables import DWARFReader, sym_format
+from ..util.parse_symbol_tables import DWARFReader, sym_format
 
 
 class lazy_property(object):

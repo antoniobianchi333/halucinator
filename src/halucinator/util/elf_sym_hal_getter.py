@@ -53,7 +53,7 @@ def format_output(functions, base_addr=0x00000000, entry=0):
 
         TODO: Change to be use symbol as the key, as the same address can
         have the multiple symbols
-        Also would require changin LibMatch
+        Also would require changing LibMatch
     '''
     out_dict = {'architecture': 'ARMEL',
                 'base_address': base_addr,
