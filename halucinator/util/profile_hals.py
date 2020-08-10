@@ -2,16 +2,15 @@
 # Under the terms of Contract DE-NA0003525 with NTESS, the U.S. Government retains 
 # certain rights in this software.
 
-import yaml
-from avatar2 import Avatar, GDBTarget, ARM_CORTEX_M3, TargetStates
 import logging
 import os
-from IPython import embed
+import yaml
 import sqlite3
 import hashlib
 import pickle
+from avatar2 import Avatar, GDBTarget, ARM_CORTEX_M3, TargetStates
+from IPython import embed
 from collections import deque, defaultdict
-
 
 class State_Recorder(object):
 

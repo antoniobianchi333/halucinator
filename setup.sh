@@ -1,42 +1,47 @@
 #!/bin/bash
-# . /etc/bash_completion
-set -e 
-set -
 
-AVATAR_REPO=https://github.com/avatartwo/avatar2.git
-# AVATAR_COMMIT=c43d08f10b8fdc662d0cc66e4b3bd2d272c8c9ba
+set -e
 
+# Detect environment
+DISTRO=`awk -F= '/^NAME/{print $2}' /etc/os-release | tr -d '"'`
+IN_VENV=$(python -c 'import sys; print ("1" if hasattr(sys, "real_prefix") else "0")')
 
-# If avatar already cloned just pull
-if pushd deps/avatar2; then
-    git pull
-    popd
-else
-    git clone  "$AVATAR_REPO" deps/avatar2    
+if (( IN_VENV == 0 )); then
+echo "Halcuinator Setup"
+echo ""
+echo "[!] You are executing this script outside a virtual environment. This is not advised."
+echo "    You are advised to create a virtual environment as follows:"
+echo ""
+echo "virtualenv halenv"
+echo "source ./halenv/bin/activate"
+echo ""
+echo "    Then re-run this script, to avoid polluting your system."
+echo "    You can type"
+echo ""
+echo "deactivate"
+echo ""
+echo "    at your shell at any point to exit this virtual environment."
+echo ""
+exit 1
 fi
+
+
+# Pull in everything in vendor, if not already done.
+git submodule update --init --recursive
 
 # keystone-engine is a dependency of avatar, but pip install doesn't build
 # correctly on ubuntu
 # use angr's prebuilt wheel
 pip install https://github.com/angr/wheels/raw/master/keystone_engine-0.9.1.post3-py2.py3-none-linux_x86_64.whl
 
-#Get submodules of avatar and build qemu
-git submodule update --init --recursive
-
-
-# Avatar broke memory emulate capability which halucinator uses,
-# Use old commit until fixed
-pushd deps/avatar2
-# git checkout "$AVATAR_COMMIT"
+pushd vendor/avatar2
 pip install -e .
 
 pushd targets
 ./build_qemu.sh
-#./build_panda.sh
 popd
 popd
 
-# Install halucinator dependencies
-pip install -r src/requirements.txt
-pip install -e src
+pip install -r requirements.txt
+pip install -e .
 

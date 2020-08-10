@@ -31,9 +31,6 @@ pslog = logging.getLogger("PeripheralServer")
 pslog.setLevel(logging.WARN)
 # log.setLevel(logging.DEBUG)
 
-PATCH_MEMORY_SIZE = 4096
-INTERCEPT_RETURN_INSTR_ADDR = 0x20000000 - PATCH_MEMORY_SIZE
-
 
 QemuTarget.trigger_interrupt = trigger_interrupt
 QemuTarget.set_vector_table_base = set_vector_table_base

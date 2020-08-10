@@ -8,11 +8,12 @@ import os
 import sys
 import string
 import IPython
+import binascii
+import struct
+
 from elftools.common.exceptions import ELFError
 from elftools.elf.elffile import ELFFile
 from elftools.elf.constants import E_FLAGS
-import binascii
-import struct
 
 # Little endian format strings
 LE_FORMAT_STRS = {'uint32_t': '<I', "uint16_t": '<H', 'uint8_t': '<B',

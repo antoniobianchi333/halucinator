@@ -2,9 +2,7 @@
 # Under the terms of Contract DE-NA0003525 with NTESS, the U.S. Government retains 
 # certain rights in this software.
 
-
 from struct import unpack
-
 
 def get_sp_and_entry(binary_filename):
     '''

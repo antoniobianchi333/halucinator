@@ -1,4 +1,4 @@
-
+halenv/*
 *~
 .*.sw*
 *.bak
@@ -6,4 +6,3 @@
 __pycache__
 *.egg-info
 
-src/build/
