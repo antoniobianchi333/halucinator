@@ -8,7 +8,6 @@ in order to allow new developers to get started hacking on halucinator.
 
  * Python 3
  * virtualenv
- * virtualenvwrapper (workon)
  * angr (binary analysis framework)
  * avatar2's qemu backend, see [github](https://github.com/avatartwo/avatar-qemu) and 
    [avatar2](https://github.com/avatartwo/avatar2).
