@@ -5,3 +5,4 @@ pyelftools
 scapy
 pycparser
 keystone-engine
+nose

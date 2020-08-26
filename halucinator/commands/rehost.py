@@ -4,6 +4,8 @@ import os
 import logging
 from argparse import ArgumentParser
 
+import ..config as cfg
+
 log = logging.getLogger("Halucinator")
 log.setLevel(logging.DEBUG)
 avalog = logging.getLogger("avatar")
@@ -18,8 +20,10 @@ emulating a binary.
 def main():
     
     p = ArgumentParser()
-    p.add_argument('-c', '--config', required=True,
-                   help='Config file used to run emulation')
+    p.add_argument('-c', '--config', required=False,
+                   help='Config file for halucinator')
+    p.add_argument('-p', '--project', required=True,
+                   help='Project configuration file used to run emulation')
     p.add_argument('-m', '--memory_config', required=False, default=None,
                    help='Memory Config, will overwrite config in --config if present if memories not in -c this is required')
     p.add_argument('-a', '--address', required=False,
@@ -43,7 +47,16 @@ def main():
     logging.basicConfig()
     log = logging.getLogger()
     # log.setLevel(logging.INFO)
-    with open(args.config, 'rb') as infile:
+
+    config_path = args.get("config")
+    if config_path == None:
+        config_path = 
+    
+
+    with open(, 'rb') as infile:
+        config = yaml.load(infile, Loader=yaml.FullLoader)
+
+    with open(args.project, 'rb') as infile:
         config = yaml.load(infile, Loader=yaml.FullLoader)
 
     if args.address is not None:

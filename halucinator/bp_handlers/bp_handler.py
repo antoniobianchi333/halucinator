@@ -14,9 +14,9 @@ def bp_handler(arg):
             or a list of intercepting functions e.g., @bp_handler(['F1','F2'])
 
     '''
-    print("***** Called bp_handler method!", arg)
-    import traceback
-    traceback.print_stack()
+    #print("***** Called bp_handler method!", arg)
+    #import traceback
+    #traceback.print_stack()
     if callable(arg):
         # Handles @bp_handler with out args allows any function
         arg.is_bp_handler = True

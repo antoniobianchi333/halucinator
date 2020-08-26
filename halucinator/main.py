@@ -392,10 +392,12 @@ def main():
     from argparse import ArgumentParser
     p = ArgumentParser()
     p.add_argument('-c', '--config', required=True,
-                   help='Config file used to run emulation')
-    p.add_argument('-m', '--memory_config', required=False, default=None,
-                   help='Memory Config, will overwrite config in --config if present if memories not in -c this is required')
-    p.add_argument('-a', '--address', required=False,
+                   help='Config file used to configure Halucinator')
+    p.add_argument('-p', '--project', required=True,
+                   help='Project file used to run emulation')
+    p.add_argument('-m', '--memory_description', required=False, default=None,
+                   help='Memory Config, will overwrite memories provided in config. If memory layout not supplied in config, this is required.')
+    p.add_argument('-a', '--address_description', required=False,
                    help='Yaml file of function addresses, providing it over' +
                    'rides addresses in config file for functions')
     p.add_argument('--log_blocks', default=False, const=True, nargs='?',

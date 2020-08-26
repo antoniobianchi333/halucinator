@@ -4,10 +4,9 @@
 # Under the terms of Contract DE-NA0003525 with NTESS, the U.S. Government retains 
 # certain rights in this software.
 
-
 import os
-from distutils.core import setup
-
+#from distutils.core import setup
+from setuptools import setup
 
 def get_packages(rel_dir):
     packages = [rel_dir]
@@ -22,20 +21,27 @@ def get_packages(rel_dir):
 
     return packages
 
-
-setup(name='halucinator',
-      version='1.0a',
-      description='Emulation and rehosting framework',
-      author='Abe Clements and Eric Gustafson',
-      author_email='',
-      # url='https://seclab.cs.ucsb.edu',
-      packages=get_packages('halucinator'),
-      entry_points ={'console_scripts': [
+setup(
+    name='halucinator',
+    version='1.0a',
+    description='Emulation and rehosting framework',
+    author='Abe Clements and Eric Gustafson',
+    author_email='',
+    # url='https://seclab.cs.ucsb.edu',
+    packages=get_packages('halucinator'),
+    entry_points = {
+        'console_scripts': [
             'halucinator-periph = halucinator.commands.peripheral:main',
             'halucinator-rehost = halucinator.commands.rehost:main',
             'ghalucinator = halucinator.commands.gui:main'
-        ]},
-      requires=['avatar2',
-                'zeromq',
-                'PyYAML',
-                'IPython', ])
+        ]
+        },
+    requires = [
+        'avatar2',
+        'zeromq',
+        'PyYAML',
+        'IPython',
+        'nose'],
+    test_suite='nose.collector',
+    tests_require=['nose'],
+)

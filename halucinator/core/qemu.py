@@ -4,31 +4,6 @@ import os
 from avatar2 import Avatar, QemuTarget, ARM_CORTEX_M3, TargetStates
 from avatar2.peripherals.avatar_peripheral import AvatarPeripheral
 
-def find_qemu():
-
-    # NOTE: using golang's "naming" conventions here to put all 
-    # dependencies in vendor, as git submodules to allow managing 
-    # versions more nicely than scripts.
-    # this is assumed to be executed from the root of the repository
-    # BUT a TODO further down should provide a configuration file variable 
-    # for this.
-    qemu_location_default = "vendor/avatar2/targets/build/qemu/arm-softmmu/qemu-system-arm"
-
-    # allow the location to be specified as an environment variable
-    # this is to allow custom locations to be specified.
-    qemu_location = os.environ.get("HALUCINATOR_QEMU")
-    if qemu_location == None:
-        qemu_location = qemu_location_default
-
-    # TODO: also allow config file usage.
-    # TODO: switch to logger.
-    if not os.path.exists(qemu_location):
-        print(("ERROR: Could not find qemu in %s did you build it?" % qemu_location))
-        exit(1)
-    else:
-        print(("Found qemu in %s" % qemu_location))
-    return qemu_location
-
 def get_qemu_target(name, entry_addr, firmware=None, log_basic_blocks=False,
                     output_base_dir='', gdb_port=1234):
     qemu_path = find_qemu()
