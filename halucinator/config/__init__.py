@@ -4,47 +4,111 @@ import yaml
 
 class Config(dict):
     """ 
-    This class represents a configuration file in memory as a dictionary.
-    
+    This class represents a configuration file in memory as a dictionary. 
+    It knows how to load a config file from YAML and merge in "include" 
+    files.
     """
 
+    GLOBAL_ETC_PATH = "/etc/halucinator"
+    GLOBAL_LIBRARY_PATH = "/etc/halucinator/library"
+    GLOBAL_CONFIG_PATH = "/etc/halucinator/config.yml"
+
     def __init__(self, *args, **kwargs):
+
+        self.venv_path = os.environ.get("VIRTUAL_ENV")
         self.update(*args, **kwargs)
 
-    """def merge_shallow(self, other):
-        if not isinstance(other, Config):
-            raise ValueError("Can't merge other of type %s" % type(other))
-        newdict = {**self, **other}
-        self.update(newdict)"""
+    def resolve_includes(self, resolver=None):
 
+        """ this helper method will load a $path from
 
-    def resolve_includes(self, srcfile, resolver=None):
+        VENV/etc/halucinator/library/$path
+        or
+        /etc/halucinator/library/$path
+        if not in a virtualenv
 
-        include_items = self.get("include")
-        if include_items != None:
-            for include in include_items:
-                if not include.startswith("/"):
-                    cur_dir = os.path.dirname(args.config)
-                    include = os.path.abspath(os.path.join(cur_dir, include))
-                
-                replaceconfig = resolver(include)
-                
-                if replaceconfig != None:
-                    pass
-                else:
-                    raise IOError("Something failed reading/decoding %s" % include)
-        
+        PATH is of the form:
+
+            library:path/to/file
+
+        otherwise this function does nothing.
+        """
+        def resolve_library_path(path):
+            if not(path.startswith("library:")):
+                return path
+            
+            library_path = path[8:]
+            if self.venv_path != None:
+                resolved_path = os.path.join(self.venv_path, 
+                    self.GLOBAL_LIBRARY_PATH)
+            else:
+                resolved_path = self.GLOBAL_LIBRARY_PATH
+            resolved_path = os.path.join(resolved_path, library_path)
+            return resolved_path
+
+        includelist = list(nesteddictfilter(d, keyfilter=lambda k: k=="include"))
+
+        def include_load(iv):
+        # files beginning with "library:"
+            includefile = resolve_library_path(iv)
+
+            return nesteddictupdate(self, 
+                k, 
+                Config.load_from_yaml_file(includefile, resolver))
+
+        for key,ivalue in listofitems:
+            if type(ivalue)==str:
+                self = include_load(ivalue)
+            elif type(ivalue)==list:
+                for includefile in ivalue:
+                    self = include_load(includefile)
+    
+    def load_global_config(self):
+
+        if self.venv_path != None:
+            global_config_path = os.path.join(self.GLOBAL_CONFIG_PATH, 
+                self.venv_path)
+        else:
+            global_config_path = self.GLOBAL_CONFIG_PATH
+
+        global_config = Config.load_from_yaml_file(global_config_path)
+        self["global"] = global_config
+
     @classmethod
-    def load_from_yaml_file(cls, filepath):
-        with open(args.config, 'rb') as f:
-            config = yaml.load(f, Loader=yaml.FullLoader)
+    def load_from_yaml_file(cls, filepath, resolver=None):
 
+        if resolver == None:
+            with open(args.config, 'rb') as f:
+                fullcontent = f.read()
+        else:
+            fullcontent = resolver(filepath)
+        
+        config = yaml.load(fullcontent, Loader=yaml.FullLoader)
+    
         return cls(**config)
+
+    @classmethod
+    def load(cls, path, resolver=None):
+
+        # load a config object from the path.
+        config = Config.load_from_yaml_file(path, resolver)
+
+        # resolve includes:
+        config.resolve_includes(resolver)
+
+        # check the file format does not contain invalid keywords.
+        if "global" in config:
+            raise ValueError("Config files may not contain a global object")
+
+        # now load from the global config
+        config.load_global_config()
+
+        return config
 
 def gdb_find(config):
     # locate the distribution's GDB.
     
-    hostconfig = config["host"]
+    hostconfig = config["global"]
     gdb_config = hostconfig.get("gdb_location", None)
     gdb_env = os.environ.get("HALUCINATOR_QEMU")
 
@@ -72,7 +136,7 @@ def qemu_find(config):
     # this is to allow custom locations to be specified.
     qemu_env = os.environ.get("HALUCINATOR_QEMU")
     
-    hostconfig = config["host"]
+    hostconfig = config["global"]
     qemu_config = hostconfig.get("qemu_location", None)
 
     # Config rules are as follows: 
