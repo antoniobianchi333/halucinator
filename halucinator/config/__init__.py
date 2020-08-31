@@ -2,6 +2,8 @@
 import os
 import yaml
 
+from ..util.collections import *
+
 class Config(dict):
     """ 
     This class represents a configuration file in memory as a dictionary. 
@@ -14,9 +16,8 @@ class Config(dict):
     GLOBAL_CONFIG_PATH = "/etc/halucinator/config.yml"
 
     def __init__(self, *args, **kwargs):
-
+        super(Config, self).__init__(*args, **kwargs)
         self.venv_path = os.environ.get("VIRTUAL_ENV")
-        self.update(*args, **kwargs)
 
     def resolve_includes(self, resolver=None):
 
@@ -46,22 +47,31 @@ class Config(dict):
             resolved_path = os.path.join(resolved_path, library_path)
             return resolved_path
 
-        includelist = list(nesteddictfilter(d, keyfilter=lambda k: k=="include"))
+        includelist = list(nesteddictfilter(self, keyfilter=lambda k: k=="include"))
 
-        def include_load(iv):
+        def include_load(k, iv):
         # files beginning with "library:"
-            includefile = resolve_library_path(iv)
+            return 
 
-            return nesteddictupdate(self, 
-                k, 
-                Config.load_from_yaml_file(includefile, resolver))
-
-        for key,ivalue in listofitems:
+        for key,ivalue in includelist:
             if type(ivalue)==str:
-                self = include_load(ivalue)
+                Config(nesteddictupdate(self, 
+                    key, 
+                    Config.load_from_yaml_file(includefile, resolver)))
             elif type(ivalue)==list:
+                d = dict()
                 for includefile in ivalue:
-                    self = include_load(includefile)
+                    includefile = resolve_library_path(includefile)
+                    inputdict = Config.load_from_yaml_file(includefile, resolver)    
+                    for k,v in inputdict.items():
+                        values = d.get(k, None)
+                        if values != None:
+                            d[k] = {**v, **values}
+                        else:
+                            d[k] = v
+                self = Config(nesteddictupdate(self, 
+                    key, 
+                    d))
     
     def load_global_config(self):
 
@@ -104,6 +114,9 @@ class Config(dict):
         config.load_global_config()
 
         return config
+
+    def dump(self):
+        return yaml.dump(dict(**self))
 
 def gdb_find(config):
     # locate the distribution's GDB.

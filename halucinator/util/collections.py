@@ -60,6 +60,7 @@ def nesteddictupdate(d, keylist, inputdict):
 
         # extract value
         del workingdict[replacekey]
+        
         workingdict = {**workingdict, **inputdict}
 
         for parentkey, parentdict in reversed(stack):
@@ -68,9 +69,13 @@ def nesteddictupdate(d, keylist, inputdict):
         d = workingdict    
     else:
         # if the replace is in the root, this is much, much easier.
-
         del workingdict[replacekey]
-        d = {**workingdict, **inputdict}
+        for k,v in inputdict.items():
+            values = d.get(k, None)
+            if values != None:
+                d[k] = {**v, **values}
+            else:
+                d[k] = v
 
     # return the result
     return d
