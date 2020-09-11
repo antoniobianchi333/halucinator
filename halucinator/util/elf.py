@@ -2,9 +2,9 @@
 # Under the terms of Contract DE-NA0003525 with NTESS, the U.S. Government retains 
 # certain rights in this software.
 
-
-import argparse
+import angr
 import os
+import argparse
 import sys
 import string
 import IPython
@@ -14,6 +14,67 @@ import struct
 from elftools.common.exceptions import ELFError
 from elftools.elf.elffile import ELFFile
 from elftools.elf.constants import E_FLAGS
+
+import yaml
+from . import hexyaml
+
+def load_binary(filename):
+    '''
+        Loads binary using angr's cle loader
+    '''
+    loader = angr.cle.loader.Loader(filename, auto_load_libs=False,
+                                    use_system_libs=False)
+    return loader
+
+
+def build_addr_to_sym_lookup(binary):
+    '''
+        Builds a look up table that maps an address to a function
+        Lut has every address of a function in it and value is a symbol
+        Returns:
+            sym_lut(dict): {addr: Symbol}
+    '''
+    sym_lut = {}
+    loader = load_binary(binary)
+    for addr, sym in list(loader.main_object.symbols_by_addr.items()):
+        if sym.is_function:
+            start_addr = addr & 0xFFFFFFFE  # Clear Thumb bit
+            for a in range(start_addr, start_addr+sym.size, 2):
+                sym_lut[a] = sym
+    return sym_lut
+
+
+def get_functions_and_addresses(binary):
+
+    loader = load_binary(binary)
+
+    functions = {}
+    for symbol in loader.symbols:
+        if symbol.is_function:
+            # Clear Thumb bit
+            functions[symbol.name] = symbol.rebased_addr & 0xFFFFFFFE
+    return functions
+
+
+def format_output(functions, base_addr=0x00000000, entry=0):
+    '''
+        Converts the symbol dictionary to the output format used by halucinator
+
+        TODO: Change to be use symbol as the key, as the same address can
+        have the multiple symbols
+        Also would require changing LibMatch
+    '''
+    out_dict = {'architecture': 'ARMEL',
+                'base_address': base_addr,
+                'entry_point':  entry,
+                }
+    symbols = {}
+    for fname, addr in list(functions.items()):
+        symbols[addr] = fname
+    out_dict['symbols'] = symbols
+
+    return out_dict
+
 
 # Little endian format strings
 LE_FORMAT_STRS = {'uint32_t': '<I', "uint16_t": '<H', 'uint8_t': '<B',
@@ -253,38 +314,3 @@ class DWARFReader(object):
         #    print "Unhandled type"
         #    print type_die
         return ret_str, size
-
-
-def main(stream=None):
-    # parse the command-line arguments and invoke ReadElf
-    argparser = argparse.ArgumentParser(
-        usage='usage: %(prog)s [options] <elf-file>',
-        description="Parses DWARF debugging from elf file",
-        prog='readelf.py')
-    argparser.add_argument('file',
-                           nargs='?', default=None,
-                           help='ELF file to parse',)
-
-    args = argparser.parse_args()
-
-    if not args.file:
-        argparser.print_help()
-        sys.exit(0)
-
-    with open(args.file, 'rb') as file:
-        try:
-            print("Running")
-            reader = DWARFReader(file)
-            print(reader.get_function_prototype('ETH_DMAReceptionEnable'))
-            decl, size = reader.get_typedef_desc_from_die(
-                'ETH_DMARxFrameInfos')
-            print(decl, "Size: ", size)
-        except ELFError as ex:
-            sys.stderr.write('ELF error: %s\n' % ex)
-            sys.exit(1)
-
-
-# -------------------------------------------------------------------------------
-if __name__ == '__main__':
-    main()
-    # profile_main()

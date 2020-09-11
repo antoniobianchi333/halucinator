@@ -7,7 +7,6 @@ from collections import defaultdict
 
 # SparklyUnicorn: A syntactic wrapper for working with Unicorn's objects that does not make my head hurt
 
-
 class SparklyRegs(object):
 
     _uc = None

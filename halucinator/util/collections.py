@@ -2,6 +2,29 @@
 
 import collections.abc as collections
 
+
+"""
+This function walks through a nested set of python dictionaries looking 
+for a key to filter for. In Halucinator, this is `include` to allow file 
+inclusion.
+
+This function delegates to sub generators using python 3.3's `yield from` 
+syntax.
+
+This function has not been tested on asymptotically large nested dictionaries 
+and would probably perform poorly in such cases.
+
+Parameters:
+    d (dict): dictionary to search
+    Prefix (list): assume all keys begin with this prefix.
+    keyfilter (func): a function taking a single parameter, the key, and 
+                      returning true or false depending on whether that key 
+                      matches.
+
+Returns:
+    Iterator over desired key lists. To force this to be evaluated, wrap in 
+    `list()` or `tuple()`.
+"""
 def nesteddictfilter(d, prefix=None, keyfilter=None):
     for key,value in d.items():
         if isinstance(value, collections.Mapping):
@@ -32,6 +55,22 @@ def nesteddictfilter(d, prefix=None, keyfilter=None):
             else:
                 yield [key], value
 
+"""
+This function walks a nested dictionary structure, using the keylist to 
+identify which key in the tree to replace and replacing that key and sub-values 
+with inputdict.
+
+Parameters:
+
+    d (dict): dictionary to update.
+    keylist (list): list of sub-keys to the key in the dictionary to be modified, 
+                 e.g. (global, boards, include).
+    input (dict): dictionary to replace the key specified in keylist.
+
+Returns:
+    d (dict): updated dictionary (parameter is also modified).
+
+"""
 def nesteddictupdate(d, keylist, inputdict):
 
     keytuple = keylist[:-1]
