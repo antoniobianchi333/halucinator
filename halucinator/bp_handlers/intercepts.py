@@ -9,7 +9,7 @@ import yaml
 from ..util import hexyaml
 import os
 import logging
-from .. import hal_stats as hal_stats
+from ..core import statistics as hal_stats
 log = logging.getLogger("Intercepts")
 log.setLevel(logging.DEBUG)
 

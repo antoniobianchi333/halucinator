@@ -1,3 +1,7 @@
+"""
+This is the Unicorn interface for Halucinator
+"""
+
 import unicorn
 import archinfo
 import types
@@ -210,6 +214,7 @@ def unicorn_configure(args):
     if 'memory_map' not in config:
         print("Memory Configuration must be in config file")
         quit(-1)
+
 
     # Create the unicorn
     # TODO: Parse the arch, using archinfo

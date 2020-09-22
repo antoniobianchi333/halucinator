@@ -3,7 +3,7 @@
 # certain rights in this software.
 
 from avatar2.peripherals.avatar_peripheral import AvatarPeripheral
-from .. import hal_stats as hal_stats
+from ..core import statistics as hal_stats
 import logging
 
 log = logging.getLogger("GenericPeripheral")
