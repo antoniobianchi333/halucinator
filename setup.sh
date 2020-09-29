@@ -4,7 +4,7 @@ set -e
 
 # Detect environment
 DISTRO=`awk -F= '/^NAME/{print $2}' /etc/os-release | tr -d '"'`
-IN_VENV=$(python -c 'import sys; print ("1" if hasattr(sys, "real_prefix") else "0")')
+IN_VENV=$(python -c 'import sys; print ("1" if sys.prefix != sys.base_prefix else "0")')
 
 if (( IN_VENV == 0 )); then
 echo "Halcuinator Setup"
@@ -27,7 +27,7 @@ fi
 
 
 # Pull in everything in vendor, if not already done.
-git submodule update --init --recursive
+#git submodule update --init --recursive
 
 # keystone-engine is a dependency of avatar, but pip install doesn't build
 # correctly on ubuntu
@@ -37,10 +37,11 @@ pip install https://github.com/angr/wheels/raw/master/keystone_engine-0.9.1.post
 pushd vendor/avatar2
 pip install -e .
 
-pushd targets
-./build_qemu.sh
+#pushd targets
+#./build_qemu.sh
+#popd
 popd
-popd
+
 
 pip install -r requirements.txt
 pip install -e .

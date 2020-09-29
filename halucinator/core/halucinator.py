@@ -31,6 +31,7 @@ def python_version_check():
 class HalucinatorRehost(object):
 
 	def __init__(self):
-		pass
+		
+        if 
 
     

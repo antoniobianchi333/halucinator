@@ -216,13 +216,13 @@ def get_entry_and_init_sp(config, base_dir):
 
     init_memory = config['init_memory'] if 'init_memory' in config else 'flash'
     init_filename = get_memory_filename(
-        config['memories'][init_memory], base_dir)
+        config['memory_map'][init_memory], base_dir)
 
     init_sp, entry_addr, = CM_helpers.get_sp_and_entry(init_filename)
     return init_sp, entry_addr
 
 
-def override_addresses(config, address_file):
+def override_addresses(config, log, address_file):
     '''
         Replaces address in config with address from the address_file with same
         function name
@@ -256,7 +256,7 @@ def override_addresses(config, address_file):
 
     return base_addr, entry_addr
 
-def emulate_binary(config, base_dir, log_basic_blocks=None,
+def emulate_binary(config, base_dir, log, log_basic_blocks=None,
                    gdb_port=1234, elf_file=None, db_name=None):
 
     tx_port = config["ipc"].get("tx_port", 5556)
@@ -280,7 +280,7 @@ def emulate_binary(config, base_dir, log_basic_blocks=None,
 
     # Setup Memory Regions
     record_memories = []
-    for name, memory in list(config['memories'].items()):
+    for name, memory in list(config['memory_map'].items()):
         setup_memory(avatar, name, memory, base_dir, record_memories)
 
     # Add memory needed for returns

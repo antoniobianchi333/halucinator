@@ -3,6 +3,7 @@ import os
 import yaml
 
 from ..util.collections import *
+from ..util.virtualenv import virtualenv_detect
 
 class Config(dict):
     """ 
@@ -13,11 +14,11 @@ class Config(dict):
 
     GLOBAL_ETC_PATH = "/etc/halucinator"
     GLOBAL_LIBRARY_PATH = "/etc/halucinator/library"
-    GLOBAL_CONFIG_PATH = "/etc/halucinator/config.yml"
+    GLOBAL_CONFIG_PATH = "/etc/halucinator/config.yaml"
 
     def __init__(self, *args, **kwargs):
         super(Config, self).__init__(*args, **kwargs)
-        self.venv_path = os.environ.get("VIRTUAL_ENV")
+        self.venv_path = virtualenv_detect()
 
     def resolve_includes(self, resolver=None):
 
@@ -41,7 +42,7 @@ class Config(dict):
             library_path = path[8:]
             if self.venv_path != None:
                 resolved_path = os.path.join(self.venv_path, 
-                    self.GLOBAL_LIBRARY_PATH)
+                    self.GLOBAL_LIBRARY_PATH[1:])
             else:
                 resolved_path = self.GLOBAL_LIBRARY_PATH
             resolved_path = os.path.join(resolved_path, library_path)
@@ -75,23 +76,28 @@ class Config(dict):
     
     def load_global_config(self):
 
-        if self.venv_path != None:
-            global_config_path = os.path.join(self.GLOBAL_CONFIG_PATH, 
-                self.venv_path)
+        global_config_path=""
+        if self.venv_path:
+            global_config_path = os.path.join(self.venv_path, self.GLOBAL_CONFIG_PATH[1:])
         else:
             global_config_path = self.GLOBAL_CONFIG_PATH
 
         global_config = Config.load_from_yaml_file(global_config_path)
-        self["global"] = global_config
+        for k,v in global_config.items():
+            values = self.get(k, None)
+            if values != None:
+                self[k] = {**v, **values}
+            else:
+                self[k] = v
 
     @classmethod
-    def load_from_yaml_file(cls, filepath, resolver=None):
+    def load_from_yaml_file(cls, path, resolver=None):
 
         if resolver == None:
-            with open(args.config, 'rb') as f:
+            with open(path, 'rb') as f:
                 fullcontent = f.read()
         else:
-            fullcontent = resolver(filepath)
+            fullcontent = resolver(path)
         
         config = yaml.load(fullcontent, Loader=yaml.FullLoader)
     
@@ -116,7 +122,9 @@ class Config(dict):
         return config
 
     def dump(self):
-        return yaml.dump(dict(**self))
+        print(yaml.dump(dict(**self)))
+    def dumps(self):
+        return str(yaml.dump(dict(**self)))
 
 def gdb_find(config):
     # locate the distribution's GDB.
@@ -150,7 +158,7 @@ def qemu_find(config):
     qemu_env = os.environ.get("HALUCINATOR_QEMU")
     
     hostconfig = config["global"]
-    qemu_config = hostconfig.get("qemu_location", None)
+    qemu_config = hostconfig.get("arm_qemu_location", None)
 
     # Config rules are as follows: 
     # environment variable > global config > default
