@@ -1,0 +1,30 @@
+
+ARDUINO_DIR	?= /opt/arduino/ide
+ARDMK_DIR	?= /opt/arduino/arduino-makefile
+
+ARDUINO_LIBS    = SPI Ethernet Wire SoftwareSerial EEPROM
+
+PROJECT_NAME = arduino_helloworld
+
+BOARD_TAG       = uno
+VARIANT         = mega
+MCU             = atmega328p
+F_CPU           = 16000000L
+PROGRAMMER      = arduino
+WIRING          = $(MCU)
+
+MONITOR_PORT	?= /dev/ttyACM0
+
+include $(ARDMK_DIR)/Arduino.mk
+
+# My own upload logic. Outputs serial from device until EOF
+HEXFILE	= build-$(BOARD_TAG)/$(PROJECT_NAME).hex
+
+flash:	$(HEXFILE)
+	avrdude -v -c $(PROGRAMMER) -p $(WIRING) -P /dev/ttyACM0 -D -U flash:w:$(HEXFILE)
+
+serial:
+	stty -F /dev/ttyACM0 raw icanon eof \^d 9600
+	cat < /dev/ttyACM0
+
+run: flash serial
