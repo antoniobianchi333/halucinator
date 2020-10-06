@@ -4,6 +4,8 @@ import yaml
 
 from ..util.collections import *
 from ..util.virtualenv import virtualenv_detect
+from ..util.logging import *
+from ..arch import *
 
 class Config(dict):
     """ 
@@ -49,10 +51,6 @@ class Config(dict):
             return resolved_path
 
         includelist = list(nesteddictfilter(self, keyfilter=lambda k: k=="include"))
-
-        def include_load(k, iv):
-        # files beginning with "library:"
-            return 
 
         for key,ivalue in includelist:
             if type(ivalue)==str:
@@ -126,58 +124,51 @@ class Config(dict):
     def dumps(self):
         return str(yaml.dump(dict(**self)))
 
-def gdb_find(config):
-    # locate the distribution's GDB.
-    
-    hostconfig = config["global"]
-    gdb_config = hostconfig.get("gdb_location", None)
-    gdb_env = os.environ.get("HALUCINATOR_QEMU")
 
-    if gdb_config != None:
-        gdb_location = gdb_config
-    if gdb_env != None:
-        gdb_location = gdb_config
+# TODO: should these be where they are?
 
-    if not os.path.exists(gdb_location):
-        print(("ERROR: Could not find gdb at %s did you build it?" % gdb_location))
-        exit(1)
-    else:
-        print(("Found qemu in %s" % qemu_location))
-    return qemu_location
 
 def qemu_find(config):
-
-    # NOTE: using golang's "naming" conventions here to put all 
-    # dependencies in vendor, as git submodules to allow managing 
-    # versions more nicely than scripts.
-    # this is assumed to be executed from the root of the repository
-    qemu_location_default = "vendor/avatar2/targets/build/qemu/arm-softmmu/qemu-system-arm"
 
     # allow the location to be specified as an environment variable
     # this is to allow custom locations to be specified.
     qemu_env = os.environ.get("HALUCINATOR_QEMU")
+
+    arch = config["ARCHDEF"]
+    qemukey = ""
+
+    # TODO: move this dependency into Arch, so that there is one point 
+    # of failure.
+    # or else define it somewhere else in here.
+    if arch == Architecture.CORTEXM:
+        qemukey = "arm_qemu_location"
+    elif arch == Architecture.AVR8:
+        qemukey = "avr_qemu_location"
+    else:
+        log.error("Unknown Architecture, unable to find qemu")
+        return None
     
-    hostconfig = config["global"]
-    qemu_config = hostconfig.get("arm_qemu_location", None)
+    print(qemukey)
+    qemu_config = config.get(qemukey, None)
 
     # Config rules are as follows: 
     # environment variable > global config > default
-    
-    if qemu_env == None or qemu_config == None:
-        qemu_location = qemu_location_default
-    else:
-        # if both config and env are set, env takes precedence
-        # if only one is set, this will ensure that option is set to qemu_location.
+    qemu_location = None
 
-        if qemu_config != None:
-            qemu_location = qemu_config
+    # if both config and env are set, env takes precedence
+    # if only one is set, this will ensure that option is set to qemu_location.
 
-        if qemu_env != None:
-            qemu_location = qemu_env
-    
-    if not os.path.exists(qemu_location):
-        print(("ERROR: Could not find qemu at %s did you build it?" % qemu_location))
-        exit(1)
+    if qemu_config != None:
+        qemu_location = qemu_config
+
+    if qemu_env != None:
+        qemu_location = qemu_env
+
+    if qemu_location:
+        if not os.path.exists(qemu_location):
+            log.error("ERROR: Could not find qemu at %s did you build it?" % qemu_location)
+        else:
+            log.info("Found qemu in %s" % qemu_location)
     else:
-        print(("Found qemu in %s" % qemu_location))
+        log.critical("Logic Error. Unable to find qemu.")
     return qemu_location

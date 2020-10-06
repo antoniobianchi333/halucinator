@@ -1,3 +1,4 @@
+architecture: cortex-m3
 intercepts:
 
 - class: halucinator.bp_handlers.generic.armv7m_param_log.ARMv7MEABILogger 

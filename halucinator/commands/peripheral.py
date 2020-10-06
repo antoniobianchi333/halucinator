@@ -4,8 +4,7 @@ import os
 import logging
 from argparse import ArgumentParser
 
-log = logging.getLogger("Halucinator")
-log.setLevel(logging.DEBUG)
+
 avalog = logging.getLogger("avatar")
 avalog.setLevel(logging.WARN)
 pslog = logging.getLogger("PeripheralServer")

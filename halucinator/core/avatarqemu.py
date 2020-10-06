@@ -17,6 +17,8 @@ from IPython import embed
 from avatar2 import Avatar, QemuTarget, ARM_CORTEX_M3, TargetStates
 from avatar2.peripherals.avatar_peripheral import AvatarPeripheral
 
+from ..config import *
+from ..config.gdb import gdb_find
 from ..util import hexyaml
 from ..peripheral_models import generic as peripheral_emulators
 from ..bp_handlers import intercepts as intercepts
@@ -24,7 +26,8 @@ from ..peripheral_models import peripheral_server as periph_server
 from ..util.profile_hals import State_Recorder
 from ..util import cortex_m_helpers as CM_helpers
 from . import statistics as hal_stats
-
+from .. import arch as arch
+from ..util.logging import *
 
 PATCH_MEMORY_SIZE = 4096
 INTERCEPT_RETURN_INSTR_ADDR = 0x20000000 - PATCH_MEMORY_SIZE
@@ -120,6 +123,7 @@ def setup_memory(avatar, name, memory, base_dir=None, record_memories=None):
     permissions = memory['permissions'] if 'permissions' in memory else 'rwx'
     # if 'model' in memory:
     #     emulate = getattr(peripheral_emulators, memory['emulate'])
+
     # #TODO, just move this to models/bp_handlers but don't want break
     # all configs right now
     if 'emulate' in memory:
@@ -136,16 +140,26 @@ def setup_memory(avatar, name, memory, base_dir=None, record_memories=None):
         if 'w' in permissions:
             record_memories.append((memory['base_addr'], memory['size']))
 
-def get_qemu_target(name, entry_addr, firmware=None, log_basic_blocks=False,
+# This can stay here:
+def emulator_init(config, name, entry_addr, firmware=None, log_basic_blocks=False,
                     output_base_dir='', gdb_port=1234):
-    qemu_path = find_qemu()
+
+    # Locate binaries:
+    qemu_path = qemu_find(config)
+    gdb_path = gdb_find(config)
+
     outdir = os.path.join(output_base_dir, 'tmp', name)
     hal_stats.set_filename(outdir+"/stats.yaml")
+    
+    # Log emulation parameters:
+    log.info("* Using qemu in %s" % qemu_path)
+    log.info("* Using GDB in %s" % gdb_path)
+    log.info("* GDB Port", gdb_port)
+
+    # Set up Avatar:
     avatar = Avatar(arch=ARM_CORTEX_M3, output_directory=outdir)
-    print(("GDB_PORT", gdb_port))
-    log.critical("Using qemu in %s" % qemu_path)
     qemu = avatar.add_target(QemuTarget,
-                             gdb_executable="gdb-multiarch",
+                             gdb_executable=config["gdb_location"],
                              gdb_port=gdb_port,
                              qmp_port=gdb_port+1,
                              firmware=firmware,
@@ -153,9 +167,23 @@ def get_qemu_target(name, entry_addr, firmware=None, log_basic_blocks=False,
                              entry_address=entry_addr, name=name)
     # qemu.log.setLevel(logging.DEBUG)
 
+    # Extras:
     if log_basic_blocks == 'irq':
         qemu.additional_args = ['-d', 'in_asm,exec,int,cpu,guest_errors,avatar,trace:nvic*', '-D',
                                 os.path.join(outdir, 'qemu_asm.log')]
+    elif log_basic_blocks == 'regs':
+        qemu.additional_args = ['-d', 'in_asm,exec,cpu', '-D',
+                                os.path.join(outdir, 'qemu_asm.log')]
+    elif log_basic_blocks == 'exec':
+        qemu.additional_args = ['-d', 'exec', '-D',
+                                os.path.join(outdir, 'qemu_asm.log')]
+    elif log_basic_blocks == 'trace-nochain':
+        qemu.additional_args = ['-d', 'in_asm,exec,nochain', '-D',
+                                os.path.join(outdir, 'qemu_asm.log')]
+    elif log_basic_blocks == 'trace':
+        qemu.additional_args = ['-d', 'in_asm,exec', '-D',
+                                os.path.join(outdir, 'qemu_asm.log')]
+
     elif log_basic_blocks:
         qemu.additional_args = ['-d', 'in_asm', '-D',
                                 os.path.join(outdir, 'qemu_asm.log')]
@@ -222,7 +250,7 @@ def get_entry_and_init_sp(config, base_dir):
     return init_sp, entry_addr
 
 
-def override_addresses(config, log, address_file):
+def override_addresses(config, address_file):
     '''
         Replaces address in config with address from the address_file with same
         function name
@@ -256,20 +284,37 @@ def override_addresses(config, log, address_file):
 
     return base_addr, entry_addr
 
-def emulate_binary(config, base_dir, log, log_basic_blocks=None,
+def emulate_binary(config, base_dir, log_basic_blocks=None,
                    gdb_port=1234, elf_file=None, db_name=None):
 
     tx_port = config["ipc"].get("tx_port", 5556)
     rx_port = config["ipc"].get("rx_port", 5555)
     target_name = config.get("projectname", "HALucinator")
 
+    archstring = config.get("architecture", "")
+    archenum, _ = arch.arch_find(archstring)
+    config["ARCHDEF"] = archenum
+
+    if config["ARCHDEF"] == arch.Architecture.UNKNOWN:
+        if archstring == "":
+            log.ERROR("Architecture of project not specified. Please specify 'architecture: \"cortexm\"' in your project config yaml for default ARM Cortex-M behaviour")
+        else:
+            log.ERROR("Did not recognize architecture %s. Please specify a known architecture." % archstring)
+        quit(1)
+    
+    # TODO: remove
+    print(config["ARCHDEF"], base_dir)        
+
     init_sp, entry_addr = get_entry_and_init_sp(config, base_dir)
     periph_server.base_dir = base_dir
     log.info("Entry Addr: 0x%08x,  Init_SP 0x%08x" % (entry_addr, init_sp))
 
-    avatar, qemu = get_qemu_target(target_name, entry_addr,
-                                   log_basic_blocks=log_basic_blocks,
-                                   output_base_dir=base_dir, gdb_port=gdb_port)
+    avatar, qemu = emulator_init(config, 
+                                 target_name,
+                                 entry_addr,
+                                 log_basic_blocks=log_basic_blocks,
+                                 output_base_dir=base_dir, 
+                                 gdb_port=gdb_port)
 
     if 'options' in config:
         log.info("Config file has options")
@@ -330,6 +375,8 @@ def emulate_binary(config, base_dir, log, log_basic_blocks=None,
     # Work around Avatar-QEMU's improper init of Cortex-M3
     qemu.regs.cpsr |= 0x20  # Make sure the thumb bit is set
     qemu.regs.sp = init_sp  # Set SP as Qemu doesn't init correctly
+    
+    
     # TODO Change to be read from config
     qemu.set_vector_table_base(0x08000000)
     write_patch_memory(qemu)

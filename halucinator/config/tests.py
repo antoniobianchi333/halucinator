@@ -415,7 +415,7 @@ symbols:
   20413: sys_arch_protect
   20435: sys_arch_unprotect
   20457: lwip_htons
-  20483: lwip_htonl
+  20483: lwip_htonlcortexm
   20531: lwip_strnstr
   20639: lwip_standard_chksum
   21039: inet_chksum_pseudo
@@ -556,7 +556,7 @@ def filepathresolver(path):
 
 class TestConfigParser(unittest.TestCase):
 
-    def test_load(self):
+    def testLoad(self):
         cfg = Config.load_from_yaml_file("example.yaml", filepathresolver)
         cfg.resolve_includes(filepathresolver)
 

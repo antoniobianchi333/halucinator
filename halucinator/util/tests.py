@@ -49,7 +49,7 @@ testupdate = {'Test': 2, 'Anothertest': 3, 'inner': {'innerinner': {'dragon': 'd
 
 class TestCollections(unittest.TestCase):
 
-    def TestFind(self):
+    def testFind(self):
         d = copy.deepcopy(testdict)
 
         listofitems = list(nesteddictfilter(d, keyfilter=lambda k: k=="include"))
@@ -60,7 +60,7 @@ class TestCollections(unittest.TestCase):
         for key, value in listofitems:
             assert(key in testincludes)
 
-    def TestInsert(self):
+    def testInsert(self):
         d = copy.deepcopy(testdict)
 
         listofitems = list(nesteddictfilter(d, keyfilter=lambda k: k=="include"))

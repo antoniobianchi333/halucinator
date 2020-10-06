@@ -4,14 +4,6 @@ import logging
 import sys
 
 
-log = logging.getLogger("Halucinator")
-log.setLevel(logging.DEBUG)
-avalog = logging.getLogger("avatar")
-avalog.setLevel(logging.WARN)
-pslog = logging.getLogger("PeripheralServer")
-pslog.setLevel(logging.WARN)
-# log.setLevel(logging.DEBUG)
-
 
 QemuTarget.trigger_interrupt = trigger_interrupt
 QemuTarget.set_vector_table_base = set_vector_table_base
@@ -31,7 +23,6 @@ def python_version_check():
 class HalucinatorRehost(object):
 
 	def __init__(self):
-		
-        if 
+        pass
 
     

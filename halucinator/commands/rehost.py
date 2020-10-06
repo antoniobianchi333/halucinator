@@ -57,7 +57,7 @@ def main():
     
     # TODO: deprecate this, but for now leave it alone
     if args.get("address"):
-        avatar.override_addresses(config, log, args.get("address"))
+        avatar.override_addresses(config, args.get("address"))
 
     if 'memory_map' not in config:
         memory_config = args.get("memory_config", None)
@@ -92,7 +92,7 @@ def main():
     config.dump()
 
     # TODO force more of this into config.
-    avatar.emulate_binary(config, log, base_dir, args["log_blocks"],
+    avatar.emulate_binary(config, base_dir, args["log_blocks"],
                    elf_file=args["elf"], gdb_port=args["gdb_port"])
 
 
