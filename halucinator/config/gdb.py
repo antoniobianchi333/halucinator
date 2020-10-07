@@ -16,6 +16,6 @@ def gdb_find(config):
     if not os.path.exists(gdb_location):
         log.error("Could not find gdb at %s did you build it?" % gdb_location)
     else:
-        log.info(("Found qemu in %s" % gdb_location))
+        log.info(("Found gdb in %s" % gdb_location))
     return gdb_location
 

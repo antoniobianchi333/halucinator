@@ -152,9 +152,9 @@ def emulator_init(config, name, entry_addr, firmware=None, log_basic_blocks=Fals
     hal_stats.set_filename(outdir+"/stats.yaml")
     
     # Log emulation parameters:
-    log.info("* Using qemu in %s" % qemu_path)
-    log.info("* Using GDB in %s" % gdb_path)
-    log.info("* GDB Port", gdb_port)
+    log.info("* Using qemu = %s" % qemu_path)
+    log.info("* Using GDB = %s" % gdb_path)
+    log.info("* GDB Port = %s" % str(gdb_port))
 
     # Set up Avatar:
     avatar = Avatar(arch=ARM_CORTEX_M3, output_directory=outdir)
@@ -165,7 +165,9 @@ def emulator_init(config, name, entry_addr, firmware=None, log_basic_blocks=Fals
                              firmware=firmware,
                              executable=qemu_path,
                              entry_address=entry_addr, name=name)
-    # qemu.log.setLevel(logging.DEBUG)
+    
+    if config.get("qemu_debug", False):
+        qemu.log.setLevel(logging.DEBUG)
 
     # Extras:
     if log_basic_blocks == 'irq':
@@ -301,9 +303,7 @@ def emulate_binary(config, base_dir, log_basic_blocks=None,
         else:
             log.ERROR("Did not recognize architecture %s. Please specify a known architecture." % archstring)
         quit(1)
-    
-    # TODO: remove
-    print(config["ARCHDEF"], base_dir)        
+        
 
     init_sp, entry_addr = get_entry_and_init_sp(config, base_dir)
     periph_server.base_dir = base_dir
