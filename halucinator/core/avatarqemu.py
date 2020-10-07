@@ -17,6 +17,7 @@ from IPython import embed
 from avatar2 import Avatar, QemuTarget, ARM_CORTEX_M3, TargetStates
 from avatar2.peripherals.avatar_peripheral import AvatarPeripheral
 
+from ..arch.cortexm.qemu import *
 from ..config import *
 from ..config.gdb import gdb_find
 from ..util import hexyaml
@@ -156,15 +157,20 @@ def emulator_init(config, name, entry_addr, firmware=None, log_basic_blocks=Fals
     log.info("* Using GDB = %s" % gdb_path)
     log.info("* GDB Port = %s" % str(gdb_port))
 
+    # LUT: QEMU_ARCH_LUT={'cortex-m3': ARMv7mQemuTarget, 'arm': ARMQemuTarget}
+    qemu_target = ARMv7mQemuTarget
     # Set up Avatar:
     avatar = Avatar(arch=ARM_CORTEX_M3, output_directory=outdir)
-    qemu = avatar.add_target(QemuTarget,
+    qemu = avatar.add_target(qemu_target,
                              gdb_executable=config["gdb_location"],
                              gdb_port=gdb_port,
                              qmp_port=gdb_port+1,
                              firmware=firmware,
                              executable=qemu_path,
                              entry_address=entry_addr, name=name)
+
+                              # Get info from config
+    
     
     if config.get("qemu_debug", False):
         qemu.log.setLevel(logging.DEBUG)
@@ -395,7 +401,7 @@ def emulate_binary(config, base_dir, log_basic_blocks=None,
     # Try to tidy up nicely if: Killed (SIGKILL), interrupted (ctrl+c) or 
     # user closes controlling terminal (Hang-up HUP).
     signal.signal(signal.SIGINT, signal_handler)
-    signal.signal(signal.SIGKILL, signal_handler)
+    #signal.signal(signal.SIGKILL, signal_handler)
     signal.signal(signal.SIGHUP, signal_handler)
 
     # Emulate the Binary
