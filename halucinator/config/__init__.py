@@ -147,8 +147,7 @@ def qemu_find(config):
     else:
         log.error("Unknown Architecture, unable to find qemu")
         return None
-    
-    print(qemukey)
+
     qemu_config = config.get(qemukey, None)
 
     # Config rules are as follows: 
@@ -172,3 +171,23 @@ def qemu_find(config):
     else:
         log.critical("Logic Error. Unable to find qemu.")
     return qemu_location
+
+def get_memory_backing_file(memory, base_dir):
+    '''
+    Gets the filename for the memory to load into memory
+    Args:
+        memory(dict): Dict from yaml config file for memory 
+                          requires keys [base_addr, size] 
+                          optional keys [emulate (a memory emulator), 
+                          perimissions, filename]
+    Returns: 
+        None - if there is no file backing this memory
+        Path - the absolute path of the file to be loaded.
+    '''
+
+    filename = memory.get('file', None)
+    if filename:
+        if base_dir != None and not os.path.isabs(filename):
+            filename = os.path.join(base_dir, filename)
+    return filename
+

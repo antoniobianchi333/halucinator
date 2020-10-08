@@ -23,7 +23,7 @@ def get_packages(rel_dir):
 
 setup(
     name='halucinator',
-    version='1.0c',
+    version='1.0d',
     description='Emulation and rehosting framework',
     author='Abe Clements and Eric Gustafson',
     author_email='',

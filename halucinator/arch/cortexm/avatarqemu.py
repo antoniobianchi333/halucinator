@@ -69,8 +69,6 @@ class ARMQemuTarget(QemuTarget):
         self.regs.pc = self.regs.lr
 
 
-    
-
     def irq_set(self, irq_num=1, cpu=0):
         self.protocols.monitor.execute_command("avatar-set-irq", 
             args={"cpu_num":cpu, "irq_num": irq_num, "value":1})
@@ -112,3 +110,65 @@ class ARMv7mQemuTarget(ARMQemuTarget):
             'avatar-armv7m-enable-irq',
             {'num_irq': interrupt_number, 'num_cpu': cpu_number})
 
+
+def trigger_interrupt(qemu, interrupt_number, cpu_number=0):
+    qemu.protocols.monitor.execute_command(
+        'avatar-armv7m-inject-irq',
+        {'num_irq': interrupt_number, 'num_cpu': cpu_number})
+
+
+def set_vector_table_base(qemu, base, cpu_number=0):
+    qemu.protocols.monitor.execute_command(
+        'avatar-armv7m-set-vector-table-base',
+        {'base': base, 'num_cpu': cpu_number})
+
+
+def enable_interrupt(qemu, interrupt_number, cpu_number=0):
+    qemu.protocols.monitor.execute_command(
+        'avatar-armv7m-enable-irq',
+        {'num_irq': interrupt_number, 'num_cpu': cpu_number})
+
+
+def write_patch_memory(qemu):
+    BXLR_ADDR = INTERCEPT_RETURN_INSTR_ADDR | 1
+    CALL_RETURN_ZERO_ADDR = BXLR_ADDR + 2
+    BXLR = 0x4770
+    BXR0 = 0x4700
+    BLXR0 = 0x4780
+    MOVS_R0_0 = 0x0020
+    POP_PC = 0x00BD
+
+    qemu.write_memory(INTERCEPT_RETURN_INSTR_ADDR, 2, BXLR, 1)
+
+    # Sets R0 to 0, then return to address on stack
+    qemu.write_memory(CALL_RETURN_ZERO_ADDR, 2, MOVS_R0_0, 1)
+    qemu.write_memory(CALL_RETURN_ZERO_ADDR+2, 2, POP_PC, 1)
+
+    def exec_return(value=None):
+        if value is not None:
+            qemu.regs.r0 = value
+        qemu.regs.pc = BXLR_ADDR
+    qemu.exec_return = exec_return
+
+    def write_bx_lr(addr):
+        qemu.write_memory(addr, 2, BXLR, 1)
+    qemu.write_bx_lr = write_bx_lr
+
+    def write_bx_r0(addr):
+        qemu.write_memory(addr, 2, BXR0, 1)
+    qemu.write_bx_r0 = write_bx_r0
+
+    def write_blx_r0(addr):
+        qemu.write_memory(addr, 2, BLXR0, 1)
+    qemu.write_blx_r0 = write_blx_r0
+
+    def call_ret_0(callee, arg0):
+        # Save LR
+        sp = qemu.regs.sp - 4
+        qemu.regs.sp = sp
+        qemu.write_memory(sp, 4, qemu.regs.lr, 1)
+        # Set return to out patch that will set R0 to 0
+        qemu.regs.lr = CALL_RETURN_ZERO_ADDR
+        qemu.regs.r0 = arg0
+        qemu.regs.pc = callee
+    qemu.call_ret_0 = call_ret_0

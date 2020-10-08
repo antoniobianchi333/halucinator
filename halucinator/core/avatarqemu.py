@@ -17,7 +17,8 @@ from IPython import embed
 from avatar2 import Avatar, QemuTarget, ARM_CORTEX_M3, TargetStates
 from avatar2.peripherals.avatar_peripheral import AvatarPeripheral
 
-from ..arch.cortexm.qemu import *
+from ..arch.cortexm.avatarqemu import *
+from ..arch.cortexm.fwimg import get_sp_and_entry
 from ..config import *
 from ..config.gdb import gdb_find
 from ..util import hexyaml
@@ -25,29 +26,12 @@ from ..peripheral_models import generic as peripheral_emulators
 from ..bp_handlers import intercepts as intercepts
 from ..peripheral_models import peripheral_server as periph_server
 from ..util.profile_hals import State_Recorder
-from ..util import cortex_m_helpers as CM_helpers
 from . import statistics as hal_stats
 from .. import arch as arch
 from ..util.logging import *
 
 PATCH_MEMORY_SIZE = 4096
 INTERCEPT_RETURN_INSTR_ADDR = 0x20000000 - PATCH_MEMORY_SIZE
-
-def get_memory_filename(memory, base_dir):
-    '''
-    Gets the filename for the memory to load into memory
-    Args:
-        memory(dict): Dict from yaml config file for memory 
-                          requires keys [base_addr, size] 
-                          optional keys [emulate (a memory emulator), 
-                          perimissions, filename]
-
-    '''
-    filename = memory['file'] if 'file' in memory else None
-    if filename != None:
-        if base_dir != None and not os.path.isabs(filename):
-            filename = os.path.join(base_dir, filename)
-    return filename
 
 def add_patch_memory(avatar, qemu):
     ''' 
@@ -61,49 +45,7 @@ def add_patch_memory(avatar, qemu):
                             name='patch_memory', permissions='rwx')
 
 
-def write_patch_memory(qemu):
-    BXLR_ADDR = INTERCEPT_RETURN_INSTR_ADDR | 1
-    CALL_RETURN_ZERO_ADDR = BXLR_ADDR + 2
-    BXLR = 0x4770
-    BXR0 = 0x4700
-    BLXR0 = 0x4780
-    MOVS_R0_0 = 0x0020
-    POP_PC = 0x00BD
 
-    qemu.write_memory(INTERCEPT_RETURN_INSTR_ADDR, 2, BXLR, 1)
-
-    # Sets R0 to 0, then return to address on stack
-    qemu.write_memory(CALL_RETURN_ZERO_ADDR, 2, MOVS_R0_0, 1)
-    qemu.write_memory(CALL_RETURN_ZERO_ADDR+2, 2, POP_PC, 1)
-
-    def exec_return(value=None):
-        if value is not None:
-            qemu.regs.r0 = value
-        qemu.regs.pc = BXLR_ADDR
-    qemu.exec_return = exec_return
-
-    def write_bx_lr(addr):
-        qemu.write_memory(addr, 2, BXLR, 1)
-    qemu.write_bx_lr = write_bx_lr
-
-    def write_bx_r0(addr):
-        qemu.write_memory(addr, 2, BXR0, 1)
-    qemu.write_bx_r0 = write_bx_r0
-
-    def write_blx_r0(addr):
-        qemu.write_memory(addr, 2, BLXR0, 1)
-    qemu.write_blx_r0 = write_blx_r0
-
-    def call_ret_0(callee, arg0):
-        # Save LR
-        sp = qemu.regs.sp - 4
-        qemu.regs.sp = sp
-        qemu.write_memory(sp, 4, qemu.regs.lr, 1)
-        # Set return to out patch that will set R0 to 0
-        qemu.regs.lr = CALL_RETURN_ZERO_ADDR
-        qemu.regs.r0 = arg0
-        qemu.regs.pc = callee
-    qemu.call_ret_0 = call_ret_0
 
 def setup_memory(avatar, name, memory, base_dir=None, record_memories=None):
     '''
@@ -119,7 +61,7 @@ def setup_memory(avatar, name, memory, base_dir=None, record_memories=None):
                 permission
     '''
 
-    filename = get_memory_filename(memory, base_dir)
+    filename = get_memory_backing_file(memory, base_dir)
 
     permissions = memory['permissions'] if 'permissions' in memory else 'rwx'
     # if 'model' in memory:
@@ -153,9 +95,9 @@ def emulator_init(config, name, entry_addr, firmware=None, log_basic_blocks=Fals
     hal_stats.set_filename(outdir+"/stats.yaml")
     
     # Log emulation parameters:
-    log.info("* Using qemu = %s" % qemu_path)
-    log.info("* Using GDB = %s" % gdb_path)
-    log.info("* GDB Port = %s" % str(gdb_port))
+    log.info("* Qemu Path = %s" % qemu_path)
+    log.info("* GDB Path  = %s" % gdb_path)
+    log.info("* GDB Port  = %s" % str(gdb_port))
 
     # LUT: QEMU_ARCH_LUT={'cortex-m3': ARMv7mQemuTarget, 'arm': ARMQemuTarget}
     qemu_target = ARMv7mQemuTarget
@@ -197,24 +139,7 @@ def emulator_init(config, name, entry_addr, firmware=None, log_basic_blocks=Fals
                                 os.path.join(outdir, 'qemu_asm.log')]
     return avatar, qemu
 
-#  Add Interrupt support to QemuTarget, will eventually be in Avatar
-#  So until then just hack in a patch like this
-def trigger_interrupt(qemu, interrupt_number, cpu_number=0):
-    qemu.protocols.monitor.execute_command(
-        'avatar-armv7m-inject-irq',
-        {'num_irq': interrupt_number, 'num_cpu': cpu_number})
 
-
-def set_vector_table_base(qemu, base, cpu_number=0):
-    qemu.protocols.monitor.execute_command(
-        'avatar-armv7m-set-vector-table-base',
-        {'base': base, 'num_cpu': cpu_number})
-
-
-def enable_interrupt(qemu, interrupt_number, cpu_number=0):
-    qemu.protocols.monitor.execute_command(
-        'avatar-armv7m-enable-irq',
-        {'num_irq': interrupt_number, 'num_cpu': cpu_number})
 
 
 def setup_peripheral(avatar, name, per, base_dir=None):
@@ -251,10 +176,10 @@ def get_entry_and_init_sp(config, base_dir):
     '''
 
     init_memory = config['init_memory'] if 'init_memory' in config else 'flash'
-    init_filename = get_memory_filename(
+    init_filename = get_memory_backing_file(
         config['memory_map'][init_memory], base_dir)
 
-    init_sp, entry_addr, = CM_helpers.get_sp_and_entry(init_filename)
+    init_sp, entry_addr, = get_sp_and_entry(init_filename)
     return init_sp, entry_addr
 
 
