@@ -5,7 +5,7 @@ import yaml
 from ..util.collections import *
 from ..util.virtualenv import virtualenv_detect
 from ..util.logging import *
-from ..arch import *
+from ..arch import Architecture
 
 class Config(dict):
     """ 

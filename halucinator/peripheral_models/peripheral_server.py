@@ -124,9 +124,6 @@ def run_server():
     global __stop_server
     global __qemu
 
-    import traceback
-    print("***** -> BT")
-    traceback.print_stack()
 
     __stop_server = False
     __rx_socket__.setsockopt(zmq.SUBSCRIBE, b'')

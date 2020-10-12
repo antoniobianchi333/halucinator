@@ -2,8 +2,11 @@
 # Under the terms of Contract DE-NA0003525 with NTESS, the U.S. Government retains 
 # certain rights in this software.
 
+PATCH_MEMORY_SIZE = 4096
+INTERCEPT_RETURN_INSTR_ADDR = 0x20000000 - PATCH_MEMORY_SIZE
 
 from avatar2 import Avatar, QemuTarget
+from halucinator.util.logging import *
 
 class ARMQemuTarget(QemuTarget):
     '''
@@ -13,6 +16,7 @@ class ARMQemuTarget(QemuTarget):
     '''
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.init_sp = 0
 
     def get_arg(self, idx):
         '''
@@ -95,6 +99,10 @@ class ARMQemuTarget(QemuTarget):
 
 class ARMv7mQemuTarget(ARMQemuTarget):
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+
     def trigger_interrupt(self, interrupt_number, cpu_number=0):
         self.protocols.monitor.execute_command(
             'avatar-armv7m-inject-irq',
@@ -111,22 +119,34 @@ class ARMv7mQemuTarget(ARMQemuTarget):
             {'num_irq': interrupt_number, 'num_cpu': cpu_number})
 
 
-def trigger_interrupt(qemu, interrupt_number, cpu_number=0):
-    qemu.protocols.monitor.execute_command(
-        'avatar-armv7m-inject-irq',
-        {'num_irq': interrupt_number, 'num_cpu': cpu_number})
+    def trigger_interrupt(self, interrupt_number, cpu_number=0):
+        self.protocols.monitor.execute_command(
+            'avatar-armv7m-inject-irq',
+            {'num_irq': interrupt_number, 'num_cpu': cpu_number})
 
 
-def set_vector_table_base(qemu, base, cpu_number=0):
-    qemu.protocols.monitor.execute_command(
-        'avatar-armv7m-set-vector-table-base',
-        {'base': base, 'num_cpu': cpu_number})
+    def set_vector_table_base(self, base, cpu_number=0):
+        self.protocols.monitor.execute_command(
+            'avatar-armv7m-set-vector-table-base',
+            {'base': base, 'num_cpu': cpu_number})
 
 
-def enable_interrupt(qemu, interrupt_number, cpu_number=0):
-    qemu.protocols.monitor.execute_command(
-        'avatar-armv7m-enable-irq',
-        {'num_irq': interrupt_number, 'num_cpu': cpu_number})
+    def enable_interrupt(self, interrupt_number, cpu_number=0):
+        self.protocols.monitor.execute_command(
+            'avatar-armv7m-enable-irq',
+            {'num_irq': interrupt_number, 'num_cpu': cpu_number})
+
+
+def add_patch_memory(avatar):
+    ''' 
+        Use a patch memory to return from intercepted functions, as 
+        it allows tracking number of intercepts
+    '''
+
+    log.info("Adding Patch Memory %s:%i" %
+             (hex(INTERCEPT_RETURN_INSTR_ADDR), PATCH_MEMORY_SIZE))
+    avatar.add_memory_range(INTERCEPT_RETURN_INSTR_ADDR, PATCH_MEMORY_SIZE,
+                            name='patch_memory', permissions='rwx')
 
 
 def write_patch_memory(qemu):
@@ -172,3 +192,17 @@ def write_patch_memory(qemu):
         qemu.regs.r0 = arg0
         qemu.regs.pc = callee
     qemu.call_ret_0 = call_ret_0
+
+def arch_specific_setup(config, qemu):
+    # TODO: fix this in upstream
+    # Work around Avatar-QEMU's improper init of Cortex-M3
+    qemu.regs.cpsr |= 0x20  # Make sure the thumb bit is set
+    qemu.regs.sp = qemu.init_sp  # Set SP as Qemu doesn't init correctly
+    
+    
+    nvic_base = int(config.get("nvic_base", 0x08000000))
+
+    qemu.set_vector_table_base(nvic_base)
+
+
+emulator = ARMv7mQemuTarget

@@ -1,7 +1,7 @@
 ---
 arm_qemu_location: /opt/qemu/bin/qemu-system-arm
 avr_qemu_location: /opt/qemu/bin/qemu-system-avr
-qemu_debug: true
+qemu_debug: false
 gdb_location: /usr/bin/gdb
 ipc:
     tx_port: 5556

@@ -12,7 +12,7 @@ from itertools import repeat
 import time
 
 log = logging.getLogger("UARTModel")
-# log.setLevel(logging.DEBUG)
+log.setLevel(logging.DEBUG)
 
 # Register the pub/sub calls and methods that need mapped
 @peripheral_server.peripheral_model

@@ -17,33 +17,19 @@ from IPython import embed
 from avatar2 import Avatar, QemuTarget, ARM_CORTEX_M3, TargetStates
 from avatar2.peripherals.avatar_peripheral import AvatarPeripheral
 
-from ..arch.cortexm.avatarqemu import *
-from ..arch.cortexm.fwimg import get_sp_and_entry
+from .. import arch
+from ..arch.avatarqemu import AVATARQEMULUT
 from ..config import *
 from ..config.gdb import gdb_find
 from ..util import hexyaml
-from ..peripheral_models import generic as peripheral_emulators
-from ..bp_handlers import intercepts as intercepts
-from ..peripheral_models import peripheral_server as periph_server
 from ..util.profile_hals import State_Recorder
-from . import statistics as hal_stats
-from .. import arch as arch
 from ..util.logging import *
+from .halucinator import *
 
-PATCH_MEMORY_SIZE = 4096
-INTERCEPT_RETURN_INSTR_ADDR = 0x20000000 - PATCH_MEMORY_SIZE
-
-def add_patch_memory(avatar, qemu):
-    ''' 
-        Use a patch memory to return from intercepted functions, as 
-        it allows tracking number of intercepts
-    '''
-
-    log.info("Adding Patch Memory %s:%i" %
-             (hex(INTERCEPT_RETURN_INSTR_ADDR), PATCH_MEMORY_SIZE))
-    avatar.add_memory_range(INTERCEPT_RETURN_INSTR_ADDR, PATCH_MEMORY_SIZE,
-                            name='patch_memory', permissions='rwx')
-
+from ..bp_handlers import intercepts as intercepts
+from ..peripheral_models import generic as peripheral_emulators
+from ..peripheral_models import peripheral_server as periph_server
+from . import statistics as hal_stats
 
 
 
@@ -84,7 +70,7 @@ def setup_memory(avatar, name, memory, base_dir=None, record_memories=None):
             record_memories.append((memory['base_addr'], memory['size']))
 
 # This can stay here:
-def emulator_init(config, name, entry_addr, firmware=None, log_basic_blocks=False,
+def emulator_init(config, archimpl, name, entry_addr, firmware=None, log_basic_blocks=False,
                     output_base_dir='', gdb_port=1234):
 
     # Locate binaries:
@@ -100,7 +86,9 @@ def emulator_init(config, name, entry_addr, firmware=None, log_basic_blocks=Fals
     log.info("* GDB Port  = %s" % str(gdb_port))
 
     # LUT: QEMU_ARCH_LUT={'cortex-m3': ARMv7mQemuTarget, 'arm': ARMQemuTarget}
-    qemu_target = ARMv7mQemuTarget
+    # AV: archimpl now sets its avatarqemu.emulator variable to the class 
+    # name it uses as its Qemu class. 
+    qemu_target = archimpl.avatarqemu.emulator
     # Set up Avatar:
     avatar = Avatar(arch=ARM_CORTEX_M3, output_directory=outdir)
     qemu = avatar.add_target(qemu_target,
@@ -151,7 +139,7 @@ def setup_peripheral(avatar, name, per, base_dir=None):
 
 
 
-def get_entry_and_init_sp(config, base_dir):
+def get_entry_and_init_sp(config, base_dir, archimpl):
     '''
     Gets the entry point and the initial SP.
     This is a work around because AVATAR-QEMU does not init Cortex-M3
@@ -175,11 +163,11 @@ def get_entry_and_init_sp(config, base_dir):
                             permissions=permissions, emulate=emulate)
     '''
 
-    init_memory = config['init_memory'] if 'init_memory' in config else 'flash'
-    init_filename = get_memory_backing_file(
-        config['memory_map'][init_memory], base_dir)
+    init_memory_key = config.get('init_memory', 'flash')
+    init_memory_section = config['memory_map'][init_memory_key]
+    init_filename = get_memory_backing_file(init_memory_section , base_dir)
 
-    init_sp, entry_addr, = get_sp_and_entry(init_filename)
+    init_sp, entry_addr, = archimpl.fwimg.get_sp_and_entry(init_filename)
     return init_sp, entry_addr
 
 
@@ -235,12 +223,19 @@ def emulate_binary(config, base_dir, log_basic_blocks=None,
             log.ERROR("Did not recognize architecture %s. Please specify a known architecture." % archstring)
         quit(1)
         
+    # AV TODO: this is a little bit ugly. Ideally, we would not use 
+    # python modules for this, but archimpl would be a class.
+    # However this leaves us the flexibility to define functions and 
+    # generic support across architectures, so we'll leave it 
+    # alone for now.
+    archimpl = AVATARQEMULUT[config["ARCHDEF"]]
 
-    init_sp, entry_addr = get_entry_and_init_sp(config, base_dir)
+    init_sp, entry_addr = get_entry_and_init_sp(config, base_dir, archimpl)
     periph_server.base_dir = base_dir
     log.info("Entry Addr: 0x%08x,  Init_SP 0x%08x" % (entry_addr, init_sp))
 
     avatar, qemu = emulator_init(config, 
+                                 archimpl,
                                  target_name,
                                  entry_addr,
                                  log_basic_blocks=log_basic_blocks,
@@ -260,7 +255,7 @@ def emulate_binary(config, base_dir, log_basic_blocks=None,
         setup_memory(avatar, name, memory, base_dir, record_memories)
 
     # Add memory needed for returns
-    add_patch_memory(avatar, qemu)
+    archimpl.avatarqemu.add_patch_memory(avatar)
 
     # Add recorder to avatar
     # Used for debugging peripherals
@@ -302,20 +297,16 @@ def emulate_binary(config, base_dir, log_basic_blocks=None,
     for intercept in config['intercepts']:
         intercepts.register_bp_handler(qemu, intercept)
 
-    # TODO: fix this in upstream
-    # Work around Avatar-QEMU's improper init of Cortex-M3
-    qemu.regs.cpsr |= 0x20  # Make sure the thumb bit is set
-    qemu.regs.sp = init_sp  # Set SP as Qemu doesn't init correctly
+    qemu.init_sp = init_sp
+    archimpl.avatarqemu.arch_specific_setup(config, qemu)
+    archimpl.avatarqemu.write_patch_memory(qemu)
     
-    
-    # TODO Change to be read from config
-    qemu.set_vector_table_base(0x08000000)
-    write_patch_memory(qemu)
 
     def signal_handler(signum,frame):
         #try:
         log.info("Received Signal %d, shutting down." % signum)
-        periph_server.stop()
+        if periph_server:
+            periph_server.stop()
         avatar.stop()
         avatar.shutdown()
         log.info("Shutdown Complete.")
@@ -336,4 +327,11 @@ def emulate_binary(config, base_dir, log_basic_blocks=None,
     qemu.cont()
     
     periph_server.run_server()
+
+class AvatarQemuRehost(HalucinatorRehost):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+
 

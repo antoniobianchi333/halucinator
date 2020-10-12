@@ -2,6 +2,8 @@
 
 from enum import Enum
 import re
+import halucinator as halucinator
+import importlib
 
 # TODO: This roughly mirrors the work of angr's archinfo to detect architecture 
 # from a given configuration name. 
@@ -28,4 +30,3 @@ arch_register(r'.*cortexm|.*cortex\-m.*|.*v7\-m.*',
               Architecture.CORTEXM, dict())
 arch_register(r'avr.*|atmega.*',
               Architecture.AVR8, dict())
-
