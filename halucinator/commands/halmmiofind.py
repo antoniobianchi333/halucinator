@@ -29,7 +29,7 @@ def get_names_for_addrs(stats_file, binary):
         print('%s : %s' % (func, str(data)))
 
 
-if __name__ == '__main__':
+def main():
     from argparse import ArgumentParser
     p = ArgumentParser()
     p.add_argument("-s", '--stats', required=True,
@@ -40,3 +40,6 @@ if __name__ == '__main__':
 
     args = p.parse_args()
     get_names_for_addrs(args.stats, args.bin)
+
+if __name__ == '__main__':
+    main()

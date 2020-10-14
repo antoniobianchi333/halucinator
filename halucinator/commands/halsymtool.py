@@ -1,5 +1,9 @@
 
 
+import os
+import sys
+from halucinator.binfmt.elf import *
+
 def dwarfparse():
     # parse the command-line arguments and invoke ReadElf
     argparser = argparse.ArgumentParser(
@@ -28,7 +32,8 @@ def dwarfparse():
             sys.stderr.write('ELF error: %s\n' % ex)
             sys.exit(1)
 
-if __name__ == '__main__':
+
+def main():
     '''
     Gets Symbols from elf file using the symbols table in the elf
     '''
@@ -50,6 +55,9 @@ if __name__ == '__main__':
         yaml.safe_dump(out_dict, outfile)
 
 
+
+if __name__ == '__main__':
+    main()    
 
 
 

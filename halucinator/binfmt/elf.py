@@ -16,7 +16,7 @@ from elftools.elf.elffile import ELFFile
 from elftools.elf.constants import E_FLAGS
 
 import yaml
-from . import hexyaml
+from halucinator.util.hexyaml import *
 
 def load_binary(filename):
     '''

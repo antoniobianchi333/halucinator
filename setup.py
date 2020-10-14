@@ -33,6 +33,8 @@ setup(
         'console_scripts': [
             'halucinator-periph = halucinator.commands.peripheral:main',
             'halucinator-rehost = halucinator.commands.rehost:main',
+            'halucinator-symtool = halucinator.commands.halsymtool:main',
+            'halucinator-mmiofind = halucinator.commands.halmmiofind:main',
             'ghalucinator = halucinator.commands.gui:main'
         ]
         },
