@@ -49,11 +49,14 @@ def main():
     if args.out == None:
         args.out = os.path.splitext(args.bin)[0] + "_addrs.yaml"
 
-    functions = get_functions_and_addresses(args.bin)
+    elffile = ELFParser(args.bin)
+    print("Parsing ELF File: %s" % args.bin)
+    print("Writing output to: %s" % args.out)
+    functions = elffile.get_functions_and_addresses()
+
     with open(args.out, 'w') as outfile:
         out_dict = format_output(functions)
         yaml.safe_dump(out_dict, outfile)
-
 
 
 if __name__ == '__main__':

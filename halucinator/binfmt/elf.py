@@ -2,12 +2,11 @@
 # Under the terms of Contract DE-NA0003525 with NTESS, the U.S. Government retains 
 # certain rights in this software.
 
-import angr
 import os
 import argparse
 import sys
 import string
-import IPython
+
 import binascii
 import struct
 
@@ -15,48 +14,137 @@ from elftools.common.exceptions import ELFError
 from elftools.elf.elffile import ELFFile
 from elftools.elf.constants import E_FLAGS
 
+#import IPython
+
+import cxxfilt
+import angr
+
 import yaml
 from halucinator.util.hexyaml import *
+from halucinator.arch import Architecture
 
-def load_binary(filename):
-    '''
-        Loads binary using angr's cle loader
-    '''
-    loader = angr.cle.loader.Loader(filename, auto_load_libs=False,
-                                    use_system_libs=False)
-    return loader
+elfarchmap = {
+    "EM_ARM" : Architecture.CORTEXM,
+    "EM_AVR" : Architecture.AVR8
+}
 
 
-def build_addr_to_sym_lookup(binary):
-    '''
-        Builds a look up table that maps an address to a function
-        Lut has every address of a function in it and value is a symbol
-        Returns:
-            sym_lut(dict): {addr: Symbol}
-    '''
-    sym_lut = {}
-    loader = load_binary(binary)
-    for addr, sym in list(loader.main_object.symbols_by_addr.items()):
-        if sym.is_function:
-            start_addr = addr & 0xFFFFFFFE  # Clear Thumb bit
-            for a in range(start_addr, start_addr+sym.size, 2):
-                sym_lut[a] = sym
-    return sym_lut
+class ELFParser(object):
+
+    def __init__(self, filename):
+
+        self.filename = filename
+        self.file = open(filename, "rb+")
+        self.elf = ELFFile(self.file)
+
+        self.arch = elfarchmap.get(self.elf.header.e_machine,
+                                   Architecture.UNKNOWN)
+        if self.arch == Architecture.UNKNOWN:
+            raise RuntimeError("Can't process architecture %s", 
+                self.elf.header.e_machine)
+        self.angr_loader = None
+
+    def __del__(self):
+        self.file.close()
 
 
-def get_functions_and_addresses(binary):
+    def _address_mask(self):
 
-    loader = load_binary(binary)
+        if self.arch == Architecture.CORTEXM:
+            return 0xFFFFFFFE
+        elif self.arch == Architecture.AVR8:
+            return 0x0000FFFF
+        else:
+            raise Exception("Unknown Architecture")
 
-    functions = {}
-    for symbol in loader.symbols:
-        if symbol.is_function:
-            # Clear Thumb bit
-            functions[symbol.name] = symbol.rebased_addr & 0xFFFFFFFE
-    return functions
+    def _angr_load(self):
+        self.angr_loader = angr.cle.loader.Loader(
+            self.filename, auto_load_libs=False,
+            use_system_libs=False)
+
+    def _symbolsection(self):
+        symsection = self.elf.get_section_by_name(".symtab")
+        return symsection
+
+    def _symboltable(self, symsection):
+        symbols = list(symsection.iter_symbols())
+        named_symbols = list(filter(lambda s: s.name != '', symbols))
+        return [(s.name, s.entry) for s in named_symbols]
+
+    def _functions(self):
+        symsection = self._symbolsection()
+        symbols = self._symboltable(symsection)
+        function_symbols = list(
+            filter(
+                lambda s: s[1].st_info.type == 'STT_FUNC',
+                    symbols
+                )
+            )
+        return function_symbols
+
+    """
+    def _exported_functions(self, symtab):
+        function_symbols = list(
+            filter(lambda s: s[1].st_other.visibility == "STV_DEFAULT" or 
+                s[1].st_other.visibility == "STV_EXPORTED",
+                filter(lambda s: s[1].st_info.type == "STT_FUNC",
+                    symtab)
+            ))
+        return function_symbols
+    """
 
 
-def format_output(functions, base_addr=0x00000000, entry=0):
+    def get_functions_and_addresses(self):
+        functionmap = {}
+        function_list = self._functions()
+        addressmask = self._address_mask()
+
+        for name, info in function_list:
+            address = info.st_value & addressmask
+            functionmap[name] = address
+
+        return functionmap
+
+    def build_addr_to_sym_lookup(self):
+        addressmap = {}
+        function_list = self._functions()
+        addressmask = self._address_mask()
+        
+        for name, info in function_list:
+            address = info.st_value & addressmask
+            addressmap[address] = name
+
+        return addressmap
+
+    def _angr_address_function(self):
+
+        if self.angr_loader == None:
+            return dict()
+
+        sym_lut = {}
+        for addr, sym in list(self.angr_loader.main_object.symbols_by_addr.items()):
+            if sym.is_function:
+                # TODO: alter this.
+                start_addr = addr & addressmask  # Clear Thumb bit
+                for a in range(start_addr, start_addr+sym.size, 2):
+                    sym_lut[a] = sym
+        return sym_lut
+
+    def _angr_functions_addresses(self):
+
+        if self.angr_loader == None:
+            return dict()
+
+        functions = {}
+        for symbol in self.angr_loader.symbols:
+            if symbol.is_function:
+                # Clear Thumb bit
+                functions[symbol.name] = symbol.rebased_addr & addressmask
+        return functions
+
+
+def format_output(functions, architecture='ARMEL', 
+                  base_addr=0x00000000, entry=0):
     '''
         Converts the symbol dictionary to the output format used by halucinator
 
@@ -64,7 +152,7 @@ def format_output(functions, base_addr=0x00000000, entry=0):
         have the multiple symbols
         Also would require changing LibMatch
     '''
-    out_dict = {'architecture': 'ARMEL',
+    out_dict = {'architecture': architecture,
                 'base_address': base_addr,
                 'entry_point':  entry,
                 }
