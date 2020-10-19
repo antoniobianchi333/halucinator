@@ -7,6 +7,7 @@ import yaml
 from functools import wraps
 from multiprocessing import Process
 import logging
+
 log = logging.getLogger("PeripheralServer")
 log.setLevel(logging.DEBUG)
 
@@ -109,7 +110,7 @@ def start(rx_port=5555, tx_port=5556, qemu=None):
     __tx_socket__ = __tx_context__.socket(zmq.PUB)
     __tx_socket__.bind("tcp://*:%i" % tx_port)
 
-    #__process = Process(target=run_server).start()
+    __process = Process(target=run_server).start()
 
 
 def trigger_interrupt(num):

@@ -68,7 +68,7 @@ class IOServer(Thread):
                 self.packet_log.flush()
 
 
-if __name__ == '__main__':
+def main():
     from argparse import ArgumentParser
     p = ArgumentParser()
     p.add_argument('-r', '--rx_port', default=5556,
@@ -91,3 +91,6 @@ if __name__ == '__main__':
     except KeyboardInterrupt:
         io_server.shutdown()
         # io_server.join()
+
+if __name__ == '__main__':
+    main()

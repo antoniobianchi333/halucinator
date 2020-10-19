@@ -66,7 +66,7 @@ def start(interface, emu_rx_port=5556, emu_tx_port=5555):
     emu_rx_process.join()
 
 
-if __name__ == '__main__':
+def main():
     from argparse import ArgumentParser
     p = ArgumentParser()
     p.add_argument('-r', '--rx_port', default=5556,
@@ -75,3 +75,6 @@ if __name__ == '__main__':
                    help='Port number to send IO messages via zmq')
     args = p.parse_args()
     start(args.rx_port, args.tx_port)
+
+if __name__ == '__main__':
+    main()    
