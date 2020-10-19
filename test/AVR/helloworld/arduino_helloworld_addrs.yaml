@@ -1,0 +1,27 @@
+architecture: ARMEL
+base_address: 0
+entry_point: 0
+symbols:
+  270: pinMode.constprop.5
+  326: digitalWrite.constprop.3
+  470: _ZN14HardwareSerial17availableForWriteEv
+  500: _ZN14HardwareSerial4readEv
+  540: _ZN14HardwareSerial4peekEv
+  568: _ZN14HardwareSerial9availableEv
+  592: _ZN14HardwareSerial17_tx_udr_empty_irqEv
+  660: _ZN14HardwareSerial5writeEh
+  814: _ZN14HardwareSerial5flushEv
+  878: _Z17Serial0_availablev
+  898: _Z14serialEventRunv
+  918: _ZN5Print5writeEPKhj
+  1008: init
+  1126: micros
+  1200: delay.constprop.4
+  1308: _ZN5Print5writeEPKc.part.2.constprop.9
+  1346: _ZN5Print7printlnEPKc.constprop.6
+  1374: __vector_19
+  1450: __vector_18
+  1550: __vector_16
+  1698: main
+  1910: _GLOBAL__sub_I___vector_18
+  2000: exit
