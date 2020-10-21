@@ -1,1 +1,3 @@
 architecture: avr8
+gdb_location: /opt/arduino/ide/hardware/tools/avr/bin/avr-gdb
+qemu_debug: true

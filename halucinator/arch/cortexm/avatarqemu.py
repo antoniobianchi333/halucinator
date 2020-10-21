@@ -6,6 +6,8 @@ PATCH_MEMORY_SIZE = 4096
 INTERCEPT_RETURN_INSTR_ADDR = 0x20000000 - PATCH_MEMORY_SIZE
 
 from avatar2 import Avatar, QemuTarget
+from avatar2.archs.architecture import *
+from avatar2.archs import arm as avatararch
 from halucinator.util.logging import *
 
 class ARMQemuTarget(QemuTarget):
@@ -204,5 +206,9 @@ def arch_specific_setup(config, qemu):
 
     qemu.set_vector_table_base(nvic_base)
 
+
+def resolve_avatar_cpu(config):
+    # TODO: Select M0, M0+, M4, M7 etc as appropriate.
+    return avatararch.ARM_CORTEX_M3
 
 emulator = ARMv7mQemuTarget

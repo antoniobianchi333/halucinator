@@ -1,4 +1,4 @@
-architecture: ARMEL
+architecture: AVR
 base_address: 0
 entry_point: 0
 symbols:

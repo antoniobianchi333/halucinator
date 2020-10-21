@@ -52,22 +52,45 @@ class Config(dict):
 
         includelist = list(nesteddictfilter(self, keyfilter=lambda k: k=="include"))
 
+        # go through the include items
         for key,ivalue in includelist:
+
+            # is it just one item?
             if type(ivalue)==str:
-                Config(nesteddictupdate(self, 
+                self = Config(nesteddictupdate(self, 
                     key, 
                     Config.load_from_yaml_file(includefile, resolver)))
+
+            # is it a list of items to include?
             elif type(ivalue)==list:
+
+                # parse each one and merge them all:
                 d = dict()
                 for includefile in ivalue:
+
+                    # special path, or just a file?
                     includefile = resolve_library_path(includefile)
-                    inputdict = Config.load_from_yaml_file(includefile, resolver)    
+
+                    # load the input dictionary.
+                    inputdict = Config.load_from_yaml_file(includefile, resolver) 
+
+                    # merge it into self:
                     for k,v in inputdict.items():
                         values = d.get(k, None)
                         if values != None:
-                            d[k] = {**v, **values}
+                            if type(values) == dict and type(v) == dict:
+                                # try to merge dictionaries:
+                                d[k] = {**v, **values}
+                            else:
+                                if type(values) == type(v):
+                                    # don't override local config.
+                                    pass
+                                else:
+                                    raise RuntimeError("Config file parser can't resolve config import. Different types encountered that cannot be merged.")
                         else:
                             d[k] = v
+
+                # Replace the include key with the input dictionary.
                 self = Config(nesteddictupdate(self, 
                     key, 
                     d))
@@ -84,7 +107,15 @@ class Config(dict):
         for k,v in global_config.items():
             values = self.get(k, None)
             if values != None:
-                self[k] = {**v, **values}
+                if type(values) == dict and type(v) == dict:
+                    # try to merge dictionaries:
+                    self[k] = {**v, **values}
+                else:
+                    if type(values) == type(v):
+                        # don't override local config.
+                        pass
+                    else:
+                        raise RuntimeError("Config file parser can't resolve local/global config. Different types encountered.")
             else:
                 self[k] = v
 

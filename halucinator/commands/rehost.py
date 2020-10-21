@@ -30,7 +30,7 @@ def main():
     p.add_argument('-a', '--address', required=False,
                    help='Yaml file of function addresses, providing it over' +
                    'rides addresses in config file for functions')
-    p.add_argument('--log_blocks', default=False, const=True, nargs='?',
+    p.add_argument('--log_blocks', default=False, const=True, nargs='?', dest='logblocks',
                    help="Enables QEMU's logging of basic blocks, options [irq]")
     p.add_argument('-n', '--name', default='HALucinator',
                    help='Name of target for avatar, used for logging')
@@ -54,6 +54,9 @@ def main():
     config_path = args.get("config")
     print("Loading config from %s" % config_path)
     config = Config.load(config_path)
+
+    logblocks = args.get("logblocks", None)
+    print("Logblocks", logblocks)
     
     # TODO: deprecate this, but for now leave it alone
     if args.get("address"):
@@ -92,7 +95,7 @@ def main():
     config.dump()
 
     # TODO force more of this into config.
-    avatar.emulate_binary(config, base_dir, args["log_blocks"],
+    avatar.emulate_binary(config, base_dir, log_basic_blocks=logblocks,
                    elf_file=args["elf"], gdb_port=args["gdb_port"])
 
 

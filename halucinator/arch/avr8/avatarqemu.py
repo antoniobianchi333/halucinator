@@ -2,6 +2,8 @@
 # Under the terms of Contract DE-NA0003525 with NTESS, the U.S. Government retains 
 # certain rights in this software.
 
+from avatar2.archs.architecture import *
+from avatar2.archs import avr as avatararch
 
 """
 PATCH_MEMORY_SIZE = 4096
@@ -78,6 +80,10 @@ def write_patch_memory(qemu):
 def arch_specific_setup(config, qemu):
     pass
 
+
+def resolve_avatar_cpu(config):
+    # TODO: Select Uno or Mega2560.
+    return avatararch.AVR_UNO
 
 
 emulator = AVRQemuTarget

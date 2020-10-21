@@ -112,7 +112,11 @@ def nesteddictupdate(d, keylist, inputdict):
         for k,v in inputdict.items():
             values = d.get(k, None)
             if values != None:
-                d[k] = {**v, **values}
+                if type(values) == dict and type(v) == dict:
+                    d[k] = {**v, **values}
+                else:
+                    # difficult to resolve different types.
+                    raise RuntimeError("Unable to resolve dictionary merge.")
             else:
                 d[k] = v
 

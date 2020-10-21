@@ -142,6 +142,15 @@ class ELFParser(object):
                 functions[symbol.name] = symbol.rebased_addr & addressmask
         return functions
 
+    def get_arch(self):
+
+        if self.arch == Architecture.CORTEXM:
+            return "ARMEL"
+        elif self.arch == Architecture.AVR8:
+            return "AVR"
+        else:
+            raise Exception("Unknown Architecture")
+
 
 def format_output(functions, architecture='ARMEL', 
                   base_addr=0x00000000, entry=0):

@@ -14,7 +14,7 @@ import time
 import sys
 from IPython import embed
 
-from avatar2 import Avatar, QemuTarget, ARM_CORTEX_M3, TargetStates
+from avatar2 import Avatar, QemuTarget, TargetStates
 from avatar2.peripherals.avatar_peripheral import AvatarPeripheral
 
 from .. import arch
@@ -89,8 +89,9 @@ def emulator_init(config, archimpl, name, entry_addr, firmware=None, log_basic_b
     # AV: archimpl now sets its avatarqemu.emulator variable to the class 
     # name it uses as its Qemu class. 
     qemu_target = archimpl.avatarqemu.emulator
+    avatararch  = archimpl.avatarqemu.resolve_avatar_cpu(config)
     # Set up Avatar:
-    avatar = Avatar(arch=ARM_CORTEX_M3, output_directory=outdir)
+    avatar = Avatar(arch=avatararch, output_directory=outdir)
     qemu = avatar.add_target(qemu_target,
                              gdb_executable=config["gdb_location"],
                              gdb_port=gdb_port,
@@ -186,16 +187,21 @@ def override_addresses(config, address_file):
         entry_addr = addr_config['entry_point']
 
     remove_ids = []
-    for intercept in config['intercepts']:
-        f_name = intercept['function']
-        # Update address if in address list
-        if f_name in func2addr_lut:
-            intercept['addr'] = (func2addr_lut[f_name] &
-                                 0xFFFFFFFE)  # clear thumb bit
-            log.info("Replacing address for %s with %s " %
-                     (f_name, hex(func2addr_lut[f_name])))
-        elif 'addr' not in intercept:
-            remove_ids.append((intercept, f_name))
+
+    intercepts = config.get('intercepts')
+    if intercepts != None:
+        for intercept in intercepts:
+            f_name = intercept['function']
+            # Update address if in address list
+            if f_name in func2addr_lut:
+                intercept['addr'] = (func2addr_lut[f_name] &
+                                    0xFFFFFFFE)  # clear thumb bit
+                log.info("Replacing address for %s with %s " %
+                        (f_name, hex(func2addr_lut[f_name])))
+            elif 'addr' not in intercept:
+                remove_ids.append((intercept, f_name))
+    else:
+        log.warn("No intercepts found in configuration file.")
 
     config['callables'] = func2addr_lut
 
@@ -268,23 +274,33 @@ def emulate_binary(config, base_dir, log_basic_blocks=None,
     else:
         avatar.recorder = None
 
-    # Setup Peripherals Regions
-    for name, per in list(config['peripherals'].items()):
-        # They are just memories
-        setup_peripheral(avatar, name, per, base_dir)
+    # Setup Peripherals' Regions
+    peripherallist = config.get('peripherals')
+    if peripherallist != None:
+        peripherals = list(peripherallist.items())
+        for name, per in peripherals:
+            # They are just memories
+            setup_peripheral(avatar, name, per, base_dir)
+    else:
+        log.warn("No peripherals configured in config file.")
 
     # Setup Intercept MMIO Regions
     added_classes = []
-    for intercept in config['intercepts']:
-        bp_cls = intercepts.get_bp_handler(intercept)
-        if issubclass(bp_cls.__class__, AvatarPeripheral):
-            name, addr, size, per = bp_cls.get_mmio_info()
-            if bp_cls not in added_classes:
-                log.info("Adding Memory Region for %s, (Name: %s, Addr: %s, Size:%s)"
-                         % (bp_cls.__class__.__name__, name, hex(addr), hex(size)))
-                avatar.add_memory_range(addr, size, name=name, permissions=per,
-                                        forwarded=True, forwarded_to=bp_cls)
-                added_classes.append(bp_cls)
+
+    interceptlist = config.get('intercepts')
+    if interceptlist != None:
+        for intercept in interceptlist:
+            bp_cls = intercepts.get_bp_handler(intercept)
+            if issubclass(bp_cls.__class__, AvatarPeripheral):
+                name, addr, size, per = bp_cls.get_mmio_info()
+                if bp_cls not in added_classes:
+                    log.info("Adding Memory Region for %s, (Name: %s, Addr: %s, Size:%s)"
+                            % (bp_cls.__class__.__name__, name, hex(addr), hex(size)))
+                    avatar.add_memory_range(addr, size, name=name, permissions=per,
+                                            forwarded=True, forwarded_to=bp_cls)
+                    added_classes.append(bp_cls)
+    else:
+        log.warn("No intercepts found in configuration file.")
    
     # Setup Intecepts
     avatar.watchmen.add_watchman('BreakpointHit', 'before',
