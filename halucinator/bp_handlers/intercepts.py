@@ -143,11 +143,27 @@ def interceptor(avatar, message):
         Callback for Avatar2 break point watchman.  It then dispatches to
         correct handler
     '''
+
     bp = int(message.breakpoint_number)
     qemu = message.origin
+
+    if len(bp2handler_lut.items()) == 0:
+
+        # We have no interrupt handlers. 
+        # The only thing we can do is continue the VM
+        qemu.cont()
+        return
+
+    # TODO: THUMB bit make generic.
     pc = qemu.regs.pc & 0xFFFFFFFE  # Clear Thumb bit
 
-    cls, method = bp2handler_lut[bp]
+    try:
+        cls, method = bp2handler_lut[bp]
+    except KeyError:
+        log.exception("Unable to find hnadler for %8x" % bp)
+        qemu.cont()
+        return
+
     hal_stats.stats[bp]['count'] += 1
     hal_stats.write_on_update(
         'used_intercepts', hal_stats.stats[bp]['function'])
@@ -157,7 +173,10 @@ def interceptor(avatar, message):
         intercept, ret_value = method(cls, qemu, pc)
     except:
         log.exception("Error executing handler %s" % (repr(method)))
+        # todo: alert control channels that
+        # emulation is now in an inconsistent state, potentially.
         raise
+
     if intercept:
         if ret_value != None:
             # Puts ret value in r0

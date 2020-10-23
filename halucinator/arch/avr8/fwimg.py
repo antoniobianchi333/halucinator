@@ -3,7 +3,6 @@
 # certain rights in this software.
 
 from struct import unpack
-from elftools.elf.elffile import ELFFile
 
 def get_sp_and_entry(binary_filename):
     '''
@@ -19,9 +18,8 @@ def get_sp_and_entry(binary_filename):
     sp = 0x900
     entry = 0
 
-    with open(binary_filename, 'rb+') as f:
-        e = ELFFile(f)
-        entry = e.header.e_entry
-        print(entry)
+    with open(binary_filename, 'rb') as bin_file:
+        # https://docs.python.org/3/library/struct.html#format-characters
+        entry = unpack('<H', bin_file.read(2))[0]
 
     return sp, entry
