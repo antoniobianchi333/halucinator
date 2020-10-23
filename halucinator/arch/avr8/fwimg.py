@@ -3,6 +3,7 @@
 # certain rights in this software.
 
 from struct import unpack
+from elftools.elf.elffile import ELFFile
 
 def get_sp_and_entry(binary_filename):
     '''
@@ -14,7 +15,13 @@ def get_sp_and_entry(binary_filename):
     Returns:
         sp(int), entry(int):  Stack pointer and entry point of board
     '''
-    with open(binary_filename, 'rb') as bin_file:
-        sp, entry = unpack('<II', bin_file.read(8))
+    # TODO: this is hardcoded for the UNO. We need to fix it.
+    sp = 0x900
+    entry = 0
+
+    with open(binary_filename, 'rb+') as f:
+        e = ELFFile(f)
+        entry = e.header.e_entry
+        print(entry)
 
     return sp, entry

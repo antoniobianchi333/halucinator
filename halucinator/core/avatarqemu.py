@@ -84,6 +84,7 @@ def emulator_init(config, archimpl, name, entry_addr, firmware=None, log_basic_b
     log.info("* Qemu Path = %s" % qemu_path)
     log.info("* GDB Path  = %s" % gdb_path)
     log.info("* GDB Port  = %s" % str(gdb_port))
+    log.info("* Entry Address = 0x%08x" % (entry_addr))
 
     # LUT: QEMU_ARCH_LUT={'cortex-m3': ARMv7mQemuTarget, 'arm': ARMQemuTarget}
     # AV: archimpl now sets its avatarqemu.emulator variable to the class 
@@ -168,7 +169,8 @@ def get_entry_and_init_sp(config, base_dir, archimpl):
     init_memory_section = config['memory_map'][init_memory_key]
     init_filename = get_memory_backing_file(init_memory_section , base_dir)
 
-    init_sp, entry_addr, = archimpl.fwimg.get_sp_and_entry(init_filename)
+    init_sp, entry_addr = archimpl.fwimg.get_sp_and_entry(init_filename)
+    print("--------", entry_addr)
     return init_sp, entry_addr
 
 
@@ -287,8 +289,8 @@ def emulate_binary(config, base_dir, log_basic_blocks=None,
     # Setup Intercept MMIO Regions
     added_classes = []
 
-    interceptlist = config.get('intercepts')
-    if interceptlist != None:
+    interceptlist = config.get('intercepts', [])
+    if interceptlist:
         for intercept in interceptlist:
             bp_cls = intercepts.get_bp_handler(intercept)
             if issubclass(bp_cls.__class__, AvatarPeripheral):
@@ -310,8 +312,10 @@ def emulate_binary(config, base_dir, log_basic_blocks=None,
     avatar.callables = config['callables']
     avatar.init_targets()
 
-    for intercept in config['intercepts']:
-        intercepts.register_bp_handler(qemu, intercept)
+    if interceptlist:
+        for intercept in intercepts:
+            intercepts.register_bp_handler(qemu, intercept)
+    
 
     qemu.init_sp = init_sp
     archimpl.avatarqemu.arch_specific_setup(config, qemu)
