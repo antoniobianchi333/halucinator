@@ -4,13 +4,8 @@
 
 from avatar2.archs.architecture import *
 from avatar2.archs import avr as avatararch
-
-"""
-PATCH_MEMORY_SIZE = 4096
-INTERCEPT_RETURN_INSTR_ADDR = 0x20000000 - PATCH_MEMORY_SIZE
-"""
-
 from avatar2 import Avatar, QemuTarget
+from halucinator.util.logging import *
 
 class AVRQemuTarget(QemuTarget):
     '''
@@ -22,6 +17,7 @@ class AVRQemuTarget(QemuTarget):
         super().__init__(*args, **kwargs)
         
     def get_arg(self, idx):
+        print("------ get_arg: ignored")
         '''
             Gets the value for a function argument (zero indexed)
 
@@ -31,6 +27,7 @@ class AVRQemuTarget(QemuTarget):
         pass
 
     def set_arg(self, idx, value):
+        print("------ set_arg: ignored")
         '''
             Sets the value for a function argument (zero indexed)
 
@@ -41,6 +38,7 @@ class AVRQemuTarget(QemuTarget):
         pass
 
     def get_ret_addr(self):
+        print("------ get_ret_addr: ignored")
         '''
             Gets the return address for the function call
 
@@ -49,6 +47,7 @@ class AVRQemuTarget(QemuTarget):
         pass
 
     def set_ret_addr(self, ret_addr):
+        print("------ set_ret_addr: ignored")
         '''
             Sets the return address for the function call
             :param ret_addr Value for return address
@@ -56,6 +55,7 @@ class AVRQemuTarget(QemuTarget):
         pass
 
     def execute_return(self, ret_value):
+        print("------ execute_return: ignored")
         pass
 
     def get_symbol_name(self, addr):
@@ -69,16 +69,36 @@ class AVRQemuTarget(QemuTarget):
         return self.avatar.config.get_symbol_name(addr)
 
 
+PATCH_MEMORY_SIZE = 4096
+INTERCEPT_RETURN_INSTR_ADDR = 0x4000 - PATCH_MEMORY_SIZE
+
+
 def add_patch_memory(avatar):
-    pass
+    ''' 
+        Use a patch memory to return from intercepted functions, as 
+        it allows tracking number of intercepts
+    '''
+
+    log.info("Adding Patch Memory %s:%i" %
+             (hex(INTERCEPT_RETURN_INSTR_ADDR), PATCH_MEMORY_SIZE))
+    #avatar.add_memory_range(INTERCEPT_RETURN_INSTR_ADDR, PATCH_MEMORY_SIZE,
+    #                        name='patch_memory', permissions='rwx')
 
 
 def write_patch_memory(qemu):
+    print("--- Write patch memory ignored")
+
+
+    RET_INSTRUCTION = 0x9508
+
+
     pass
 
 
 def arch_specific_setup(config, qemu):
-    pass
+
+    qemu.regs.sp = qemu.init_sp
+    return
 
 
 def resolve_avatar_cpu(config):

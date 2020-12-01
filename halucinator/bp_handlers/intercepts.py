@@ -10,6 +10,9 @@ from ..util import hexyaml
 import os
 import logging
 from ..core import statistics as hal_stats
+
+from halucinator.arch.cortexm.avatarqemu import ARMv7mQemuTarget
+
 log = logging.getLogger("Intercepts")
 log.setLevel(logging.DEBUG)
 
@@ -119,7 +122,8 @@ def register_bp_handler(qemu, intercept_desc):
     bp_cls = get_bp_handler(intercept_desc)
     if isinstance(intercept_desc['addr'], int):
         # Clear thumb bit
-        intercept_desc['addr'] = intercept_desc['addr'] & 0xFFFFFFFE
+        if isinstance(qemu, ARMv7mQemuTarget):
+            intercept_desc['addr'] = intercept_desc['addr'] & 0xFFFFFFFE
     if 'registration_args' in intercept_desc and \
        intercept_desc['registration_args'] != None:
         handler = bp_cls.register_handler(intercept_desc['addr'],
@@ -147,6 +151,12 @@ def interceptor(avatar, message):
     bp = int(message.breakpoint_number)
     qemu = message.origin
 
+    print("----------")
+    print("----------", avatar.arch)
+    print("----------")
+    print("----------")
+    print("----------")
+
     if len(bp2handler_lut.items()) == 0:
 
         # We have no interrupt handlers. 
@@ -154,8 +164,12 @@ def interceptor(avatar, message):
         qemu.cont()
         return
 
-    # TODO: THUMB bit make generic.
-    pc = qemu.regs.pc & 0xFFFFFFFE  # Clear Thumb bit
+
+    if isinstance(qemu, ARMv7mQemuTarget):
+        # TODO: THUMB bit make generic.
+        pc = qemu.regs.pc & 0xFFFFFFFE  # Clear Thumb bit
+    else:
+        pc = qemu.regs.pc
 
     try:
         cls, method = bp2handler_lut[bp]

@@ -92,7 +92,7 @@ def main():
     base_dir = os.path.split(args["config"])[0]
 
     # Debugging for now.
-    config.dump()
+    # config.dump()
 
     # TODO force more of this into config.
     avatar.emulate_binary(config, base_dir, log_basic_blocks=logblocks,

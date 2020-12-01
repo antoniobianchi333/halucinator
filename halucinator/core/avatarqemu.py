@@ -313,7 +313,7 @@ def emulate_binary(config, base_dir, log_basic_blocks=None,
     avatar.init_targets()
 
     if interceptlist:
-        for intercept in intercepts:
+        for intercept in interceptlist:
             intercepts.register_bp_handler(qemu, intercept)
     
 

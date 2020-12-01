@@ -2,13 +2,13 @@
 # Under the terms of Contract DE-NA0003525 with NTESS, the U.S. Government retains 
 # certain rights in this software.
 
-PATCH_MEMORY_SIZE = 4096
-INTERCEPT_RETURN_INSTR_ADDR = 0x20000000 - PATCH_MEMORY_SIZE
-
 from avatar2 import Avatar, QemuTarget
 from avatar2.archs.architecture import *
 from avatar2.archs import arm as avatararch
 from halucinator.util.logging import *
+
+PATCH_MEMORY_SIZE = 4096
+INTERCEPT_RETURN_INSTR_ADDR = 0x20000000 - PATCH_MEMORY_SIZE
 
 class ARMQemuTarget(QemuTarget):
     '''
@@ -154,6 +154,17 @@ def add_patch_memory(avatar):
 def write_patch_memory(qemu):
     BXLR_ADDR = INTERCEPT_RETURN_INSTR_ADDR | 1
     CALL_RETURN_ZERO_ADDR = BXLR_ADDR + 2
+
+    """
+    These instructions are as follows:
+
+       47 70      	bx	 lr
+       47 00      	bx	 r0
+       47 80      	blx	 r0
+       00 20      	movs r0, #0
+       00 bd     	pop	{pc}
+    """
+    
     BXLR = 0x4770
     BXR0 = 0x4700
     BLXR0 = 0x4780

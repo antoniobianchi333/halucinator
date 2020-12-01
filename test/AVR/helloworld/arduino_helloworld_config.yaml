@@ -1,3 +1,18 @@
 architecture: avr8
 gdb_location: /opt/arduino/ide/hardware/tools/avr/bin/avr-gdb
 qemu_debug: true
+intercepts:
+- class: halucinator.bp_handlers.avr.rs232.AVR8SERIAL
+  function: _ZN14HardwareSerial17availableForWriteEv
+- class: halucinator.bp_handlers.avr.rs232.AVR8SERIAL
+  function: _ZN14HardwareSerial4readEv
+- class: halucinator.bp_handlers.avr.rs232.AVR8SERIAL  
+  function: _ZN14HardwareSerial4peekEv
+- class: halucinator.bp_handlers.avr.rs232.AVR8SERIAL  
+  function:  _ZN14HardwareSerial9availableEv
+- class: halucinator.bp_handlers.avr.rs232.AVR8SERIAL
+  function: _ZN14HardwareSerial17_tx_udr_empty_irqEv
+- class: halucinator.bp_handlers.avr.rs232.AVR8SERIAL
+  function: _ZN14HardwareSerial5writeEh
+- class: halucinator.bp_handlers.avr.rs232.AVR8SERIAL
+  function: _ZN14HardwareSerial5flushEv

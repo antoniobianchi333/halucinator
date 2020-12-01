@@ -15,11 +15,18 @@ def get_sp_and_entry(binary_filename):
         sp(int), entry(int):  Stack pointer and entry point of board
     '''
     # TODO: this is hardcoded for the UNO. We need to fix it.
-    sp = 0x900
+    sp = 0x08FF
     entry = 0
 
     with open(binary_filename, 'rb') as bin_file:
         # https://docs.python.org/3/library/struct.html#format-characters
-        entry = unpack('<H', bin_file.read(2))[0]
+        jump, entry = unpack('<HH', bin_file.read(4))
+
+    if jump != 0x940c:
+        raise Exception("Entry format is invalid. Entry bytes are 0x%x 0x%x" % (jump,entry))
+
+    print("********* ENTRY **********")
+    print(str(hex(entry)))
+    print("********* ENTRY **********")
 
     return sp, entry

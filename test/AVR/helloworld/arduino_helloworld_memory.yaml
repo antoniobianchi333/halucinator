@@ -1,8 +1,12 @@
 memories:
-  alias: {base_addr: 0x0, file: arduino_helloworld.elf,
-    permissions: r-x, size: 0x2dc0}
-  flash: {base_addr: 0x0, file: arduino_helloworld.elf,
-    permissions: r-x, size: 0x2dc0}
-  ram: {base_addr: 0x100000, size: 0x900}
+  alias: {base_addr: 0x0, file: arduino_helloworld.elf.bin,
+    permissions: r-x, size: 0x844}
+  flash: {base_addr: 0x0, file: arduino_helloworld.elf.bin,
+    permissions: r-x, size: 0x844}
+  # SRAM in AVR systems is between 0x0100 and 0x08FF, but in its
+  # own address space and therefore not in main memory.
+  # IDA and the ELF file mark this at 0x800000.
+  # However Qemu doesn't seem to like this at all.
+  ram: {base_addr: 0x800100, size: 0x900} 
 peripherals:
-  logger: {base_addr: 0x40000000, emulate: GenericPeripheral, permissions: rw-, size: 0x20000000}
+  #logger: {base_addr: 800100, emulate: GenericPeripheral, permissions: rw-, size: 0x900}
