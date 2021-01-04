@@ -55,7 +55,7 @@ def main():
     print("Writing output to: %s" % args.out)
     architecture = elffile.get_arch()
     functions = elffile.get_functions_and_addresses()
-    print("Arch is: %s\n", architecture))
+    print("Arch is: %s\n", architecture)
 
     with open(args.out, 'w') as outfile:
         out_dict = format_output(functions, architecture=architecture)

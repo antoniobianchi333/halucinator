@@ -257,7 +257,7 @@ def emulate_binary(config, base_dir, log_basic_blocks=None,
             log.info("Removing Bitband")
             qemu.remove_bitband = True
 
-    # Setup Memory Regions
+    # Setup Memo/bry Regions
     record_memories = []
     for name, memory in list(config['memory_map'].items()):
         setup_memory(avatar, name, memory, base_dir, record_memories)
@@ -292,7 +292,12 @@ def emulate_binary(config, base_dir, log_basic_blocks=None,
     interceptlist = config.get('intercepts', [])
     if interceptlist:
         for intercept in interceptlist:
+            log.info("Intercept: Intercept Memory Configuration %s" % (intercept["function"]))
             bp_cls = intercepts.get_bp_handler(intercept)
+            
+            if bp_cls == None:
+                log.error("Unable to find intercept class %s for %s" % (intercept["class"], intercept["functin"]))
+            
             if issubclass(bp_cls.__class__, AvatarPeripheral):
                 name, addr, size, per = bp_cls.get_mmio_info()
                 if bp_cls not in added_classes:
@@ -314,8 +319,20 @@ def emulate_binary(config, base_dir, log_basic_blocks=None,
 
     if interceptlist:
         for intercept in interceptlist:
+            
+            bp_classname = intercept.get("class")
+            bp_funcname  = intercept.get("function")
+            
+            log.info("Intercept: Wiring up intercept for %s to %s " % (bp_funcname, bp_classname))
+            
+            bp_cls = intercepts.get_bp_handler(intercept)
+
+            if bp_cls == None:
+                log.error("Unable to find intercept class %s for %s" % (intercept["class"], intercept["functin"]))
+
             intercepts.register_bp_handler(qemu, intercept)
-    
+
+            
 
     qemu.init_sp = init_sp
     archimpl.avatarqemu.arch_specific_setup(config, qemu)

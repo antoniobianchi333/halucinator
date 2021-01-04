@@ -120,10 +120,13 @@ def register_bp_handler(qemu, intercept_desc):
     '''
 
     bp_cls = get_bp_handler(intercept_desc)
+
     if isinstance(intercept_desc['addr'], int):
         # Clear thumb bit
         if isinstance(qemu, ARMv7mQemuTarget):
+            log.debug("Clearing Thumb Bit on Address")
             intercept_desc['addr'] = intercept_desc['addr'] & 0xFFFFFFFE
+
     if 'registration_args' in intercept_desc and \
        intercept_desc['registration_args'] != None:
         handler = bp_cls.register_handler(intercept_desc['addr'],
@@ -132,14 +135,23 @@ def register_bp_handler(qemu, intercept_desc):
     else:
         handler = bp_cls.register_handler(intercept_desc['addr'],
                                           intercept_desc['function'])
+
     log.info("Registering BP Handler: %s.%s : %s" % (
         intercept_desc['class'], intercept_desc['function'], hex(intercept_desc['addr'])))
+
     bp = qemu.set_breakpoint(intercept_desc['addr'])
+
+    if bp < 0:
+        log.error("Setting breakpoint for func %s at %s failed." % (intercept_desc["function"], intercept_desc["addr"]))
+        return
+
     hal_stats.stats[bp] = dict(intercept_desc)
     hal_stats.stats[bp]['count'] = 0
     hal_stats.stats[bp]['method'] = handler.__name__
 
     bp2handler_lut[bp] = (bp_cls, handler)
+
+    log.info("Breakpoint SET.")
 
 
 def interceptor(avatar, message):
@@ -174,7 +186,7 @@ def interceptor(avatar, message):
     try:
         cls, method = bp2handler_lut[bp]
     except KeyError:
-        log.exception("Unable to find hnadler for %8x" % bp)
+        log.exception("Unable to find handler for %8x" % bp)
         qemu.cont()
         return
 
