@@ -1,0 +1,31 @@
+#!/bin/sh
+
+COMMIT=`git rev-parse HEAD`
+COMMIT_MESSAGE=`git show --name-only $COMMIT --show-signature `
+
+echo "[*] Checking for PGP Signature on last commit."
+
+GPGLINES=$(echo $COMMIT_MESSAGE | grep -c "gpg\: Signature made" -)
+
+if [[ "$GPGLINES" -gt 0 ]]; then
+    echo "$(tput setaf 2)PGP Signature Detected. Commit is OK.$(tput sgr0)"
+else
+
+    echo "$(tput setaf 1)UNSIGNED COMMIT. Use git commit -S to sign commits.$(tput sgr0)"
+    exit 1;
+fi
+
+
+echo "[*] Checking for Signed-off-by on last commit."
+
+GPGLINES=$(echo $COMMIT_MESSAGE | grep -c "Signed-off-by\:" -)
+
+if [[ "$GPGLINES" -gt 0 ]]; then
+    echo "$(tput setaf 2)Signoff Detected. Commit is OK.$(tput sgr0)"
+else
+
+    echo "$(tput setaf 1)Signoff missing. Use git commit -s to include a sign-off line.$(tput sgr0)"
+    exit 1;
+fi
+
+
