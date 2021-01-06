@@ -90,7 +90,6 @@ def bp_return(qemu, bypass, ret_value):
 
 initalized_classes = {}
 bp2handler_lut = {}
-bp2handler_addr_lut = {}
 bp2handler_addr2bp = {}
 
 def get_bp_handler(intercept_desc):
@@ -154,7 +153,6 @@ def register_bp_handler(qemu, intercept_desc):
     hal_stats.stats[bp]['method'] = handler.__name__
 
     bp2handler_lut[bp] = (bp_cls, handler)
-    bp2handler_addr_lut[intercept_desc["addr"]] = (bp_cls, handler)
     bp2handler_addr2bp[intercept_desc["addr"]] = bp
 
     log.info("BREAKPOINT %d for func %s @ %s set." % (
@@ -250,14 +248,16 @@ def traphandler(avatar, message):
         qemu.cont()
         return
 
+    bp = bp2handler_addr2bp.get(message.address, 0)
+
     try:
-        cls, method = bp2handler_addr_lut[message.address]
+        cls, method = bp2handler_lut[bp]
     except KeyError:
         log.exception("Unable to find handler for %8x" % bp)
         qemu.cont()
         return
 
-    bp = bp2handler_addr2bp.get(message.address, 0)
+
 
     hal_stats.stats[bp]['count'] += 1
     hal_stats.write_on_update(
