@@ -6,3 +6,5 @@ scapy
 pycparser
 keystone-engine
 nose
+cxxfilt
+angr

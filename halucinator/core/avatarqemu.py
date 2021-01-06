@@ -312,6 +312,8 @@ def emulate_binary(config, base_dir, log_basic_blocks=None,
     # Setup Intecepts
     avatar.watchmen.add_watchman('BreakpointHit', 'before',
                                  intercepts.interceptor, is_async=True)
+    avatar.watchmen.add_watchman('SigTrapHit', 'before', 
+                                 intercepts.traphandler, is_async=True)
     qemu.gdb_port = gdb_port
 
     avatar.callables = config['callables']

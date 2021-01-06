@@ -3,15 +3,18 @@
 # certain rights in this software.
 
 from functools import wraps
-from . import bp_handler as bp_handler
+
 import importlib
 import yaml
-from ..util import hexyaml
 import os
 import logging
-from ..core import statistics as hal_stats
 
-from halucinator.arch.cortexm.avatarqemu import ARMv7mQemuTarget
+from ..util import hexyaml
+from ..core import statistics as hal_stats
+from . import bp_handler as bp_handler
+from .. import arch as arch
+
+from ..arch.cortexm.avatarqemu import ARMv7mQemuTarget
 
 log = logging.getLogger("Intercepts")
 log.setLevel(logging.DEBUG)
@@ -87,7 +90,8 @@ def bp_return(qemu, bypass, ret_value):
 
 initalized_classes = {}
 bp2handler_lut = {}
-
+bp2handler_addr_lut = {}
+bp2handler_addr2bp = {}
 
 def get_bp_handler(intercept_desc):
     '''
@@ -150,10 +154,22 @@ def register_bp_handler(qemu, intercept_desc):
     hal_stats.stats[bp]['method'] = handler.__name__
 
     bp2handler_lut[bp] = (bp_cls, handler)
+    bp2handler_addr_lut[intercept_desc["addr"]] = (bp_cls, handler)
+    bp2handler_addr2bp[intercept_desc["addr"]] = bp
 
-    log.info("Breakpoint SET.")
+    log.info("BREAKPOINT %d for func %s @ %s set." % (
+        bp, intercept_desc["function"], hex(int(intercept_desc["addr"]))
+    ))
 
 
+# Interceptor handles breakpoints from the avatar watchman configured to 
+# use it here. Specifically, it handles BreakpointHitMessage types, which have 
+# three parameters:
+# .address = where the breakpoint occurred.
+# .breakpoint_number = the number assigned via the GDB protocol
+# .origin = the origin inside avatar2, in this case the qemu emulator.
+# This function references bp2handler_lut, which maps breakpoint numbers to 
+# breakpoint handlers.
 def interceptor(avatar, message):
     '''
         Callback for Avatar2 break point watchman.  It then dispatches to
@@ -162,12 +178,7 @@ def interceptor(avatar, message):
 
     bp = int(message.breakpoint_number)
     qemu = message.origin
-
-    print("----------")
-    print("----------", avatar.arch)
-    print("----------")
-    print("----------")
-    print("----------")
+    archpkg = arch.arch_packagestring(qemu.architecture())
 
     if len(bp2handler_lut.items()) == 0:
 
@@ -204,9 +215,68 @@ def interceptor(avatar, message):
         raise
 
     if intercept:
-        if ret_value != None:
-            # Puts ret value in r0
-            qemu.regs.r0 = ret_value
-        qemu.regs.pc = qemu.regs.lr
+
+        abipkg = importlib.import_module("halucinator.arch.%s.abi")
+        abipkg.function_return_transform(ret_value, qemu.regs)
         # qemu.exec_return(ret_value)
+
     qemu.cont()
+
+# Traphandler handles trap messages from the avatar2 framework. These are 
+# SigTrapHitMessage types and have two paramaters:
+#  .address = where the trap happened.
+#  .origin  = what object inside avatar2 this came from.
+#             this is the qemu emulator.
+# This function references bp2handler_addr_lut, which maps breakpoint numbers to 
+# breakpoint handlers.
+def traphandler(avatar, message):
+
+    # TODO: this needs to be tidied up.
+
+    qemu = message.origin
+    archpkg = arch.arch_packagestring(qemu.architecture())
+
+    if isinstance(qemu, ARMv7mQemuTarget):
+        # TODO: THUMB bit make generic.
+        pc = qemu.regs.pc & 0xFFFFFFFE  # Clear Thumb bit
+    else:
+        pc = qemu.regs.pc
+
+
+    if len(bp2handler_lut.items()) == 0:
+
+        # We have no interrupt handlers. 
+        # The only thing we can do is continue the VM
+        qemu.cont()
+        return
+
+    try:
+        cls, method = bp2handler_addr_lut[message.address]
+    except KeyError:
+        log.exception("Unable to find handler for %8x" % bp)
+        qemu.cont()
+        return
+
+    bp = bp2handler_addr2bp.get(message.address, 0)
+
+    hal_stats.stats[bp]['count'] += 1
+    hal_stats.write_on_update(
+        'used_intercepts', hal_stats.stats[bp]['function'])
+
+    # print method
+    try:
+        intercept, ret_value = method(cls, qemu, pc)
+    except:
+        log.exception("Error executing handler %s" % (repr(method)))
+        # todo: alert control channels that
+        # emulation is now in an inconsistent state, potentially.
+        raise
+
+    if intercept:
+
+        abipkg = importlib.import_module("halucinator.arch.%s.abi" % archpkg)
+        abipkg.function_return_transform(ret_value, qemu.regs)
+        # qemu.exec_return(ret_value)
+
+    qemu.cont()
+

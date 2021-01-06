@@ -44,6 +44,8 @@ def main():
     p.add_argument('-o', '--out', required=False,
                    help='YAML file to save output to' +
                    'if will be output to (--bin).yaml')
+    p.add_argument('-t', '--text-relative', action='store_true', dest='textrelative', required=False,
+                   help='Return offsets relative to the start of the text section if this will be treated as a binary, rather than ELF, under emulation')
 
     args = p.parse_args()
     if args.out == None:
@@ -51,16 +53,21 @@ def main():
 
     
     elffile = ELFParser(args.bin)
-    print("Parsing ELF File: %s" % args.bin)
-    print("Writing output to: %s" % args.out)
+    print("[*] Parsing ELF File: %s" % args.bin)
+    print("[*] Writing output to: %s" % args.out)
     architecture = elffile.get_arch()
-    functions = elffile.get_functions_and_addresses()
-    print("Arch is: %s\n", architecture)
+    functions = elffile.get_functions_and_addresses(args.textrelative)
+    print("[*] Arch is: %s" % architecture)
+    if args.textrelative:
+        print("[*] Reporting symbols relative to base of text section. To report symbols relative")
+        print("    to the file base, do not pass -t/--text-relative.")
+
 
     with open(args.out, 'w') as outfile:
         out_dict = format_output(functions, architecture=architecture)
         yaml.safe_dump(out_dict, outfile)
 
+    print("[+] Output written to %s" % (outfile.name))
 
 if __name__ == '__main__':
     main()    

@@ -15,9 +15,16 @@ class Architecture(Enum):
     CORTEXM = 1
     AVR8    = 2
 
+ArchPkgMap = {
+    Architecture.CORTEXM: "cortexm",
+    Architecture.AVR8: "avr8",
+}
 
 def arch_register(regex, architecture, properties):
     architecture_list.append([regex, architecture, properties])
+
+def arch_packagestring(archenum):
+    return ArchPkgMap[archenum]
 
 def arch_find(archstr):
     for regex, enum, props in architecture_list:

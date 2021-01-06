@@ -18,12 +18,12 @@ class AVR8SERIAL(BPHandler):
     @bp_handler(['_ZN14HardwareSerial9availableEv'])
     def handle_status(self, qemu, bp_addr):
         log.info("Handle Available Status Requested, Returning True")
-        True, 1
+        return True, 0
 
     @bp_handler(['_ZN14HardwareSerial17availableForWriteEv'])
     def handle_write_status(self, qemu, bp_addr):
         log.info("Handle Write Status Requested, Returning True")
-        True, 1
+        return True, 0
 
 
     @bp_handler(['_ZN14HardwareSerial5writeEh'])

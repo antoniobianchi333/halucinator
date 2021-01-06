@@ -6,6 +6,7 @@ from avatar2 import Avatar, QemuTarget
 from avatar2.archs.architecture import *
 from avatar2.archs import arm as avatararch
 from halucinator.util.logging import *
+from .. import Architecture
 
 PATCH_MEMORY_SIZE = 4096
 INTERCEPT_RETURN_INSTR_ADDR = 0x20000000 - PATCH_MEMORY_SIZE
@@ -103,7 +104,9 @@ class ARMv7mQemuTarget(ARMQemuTarget):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        
+
+    def architecture(self):
+        return Architecture.CORTEXM
 
     def trigger_interrupt(self, interrupt_number, cpu_number=0):
         self.protocols.monitor.execute_command(

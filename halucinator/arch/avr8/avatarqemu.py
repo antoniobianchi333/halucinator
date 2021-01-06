@@ -6,6 +6,7 @@ from avatar2.archs.architecture import *
 from avatar2.archs import avr as avatararch
 from avatar2 import Avatar, QemuTarget
 from halucinator.util.logging import *
+from .. import Architecture
 
 class AVRQemuTarget(QemuTarget):
     '''
@@ -15,7 +16,10 @@ class AVRQemuTarget(QemuTarget):
     '''
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        
+
+    def architecture(self):
+        return Architecture.AVR8
+
     def get_arg(self, idx):
         print("------ get_arg: ignored")
         '''

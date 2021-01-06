@@ -29,6 +29,9 @@ elfarchmap = {
 }
 
 
+# NOTE: it might be worth borrowing the more complete ELF code from the 
+# Retrowrite project.
+
 class ELFParser(object):
 
     def __init__(self, filename):
@@ -47,7 +50,6 @@ class ELFParser(object):
     def __del__(self):
         self.file.close()
 
-
     def _address_mask(self):
 
         if self.arch == Architecture.CORTEXM:
@@ -65,6 +67,14 @@ class ELFParser(object):
     def _symbolsection(self):
         symsection = self.elf.get_section_by_name(".symtab")
         return symsection
+
+    def _textsection(self):
+        textsection = self.elf.get_section_by_name(".text")
+        return textsection
+
+    def _textoffset(self):
+        ts = self._textsection()
+        return ts.header["sh_offset"]
 
     def _symboltable(self, symsection):
         symbols = list(symsection.iter_symbols())
@@ -94,13 +104,17 @@ class ELFParser(object):
     """
 
 
-    def get_functions_and_addresses(self):
+    def get_functions_and_addresses(self, textrelative=False):
         functionmap = {}
         function_list = self._functions()
         addressmask = self._address_mask()
+        textoffset = self._textoffset()
 
         for name, info in function_list:
-            address = info.st_value & addressmask
+            if textrelative:
+                address = (info.st_value - textoffset) & addressmask
+            else:
+                address = info.st_value & addressmask
             functionmap[name] = address
 
         return functionmap
