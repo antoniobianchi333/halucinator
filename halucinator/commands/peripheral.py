@@ -2,7 +2,8 @@
 
 import os
 import logging
-from importlib import __import__ as pyimport
+from importlib import import_module as pyimport
+from inspect import getmembers, isfunction
 from argparse import ArgumentParser, REMAINDER
 
 
@@ -37,5 +38,16 @@ def main():
         log.critical("Module not supplied.")
         exit(1)
 
-    print(module)
-    print(module.getattrs())
+    functionlist = [o for o in getmembers(module) if isfunction(o[1])]
+
+    mainfunc = None
+    for name, func in functionlist:
+        if name == 'main':
+            mainfunc = func
+            break
+
+    if mainfunc == None:
+        log.critical("No main function in module")
+        exit(1)
+
+    mainfunc(args.get("remainder"))

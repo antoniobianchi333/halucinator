@@ -8,26 +8,32 @@ from ..bp_handler import BPHandler, bp_handler
 import logging
 log = logging.getLogger("AVR8SERIAL")
 log.setLevel(logging.DEBUG)
+    
+SERIAL_BUFFER_SIZE = 255
 
 class AVR8SERIAL(BPHandler):
 
+
     def __init__(self, impl=SerialPublisher):
         self.model = impl
-
+        self.buffer_head = 0
 
     @bp_handler(['_ZN14HardwareSerial9availableEv'])
     def handle_status(self, qemu, bp_addr):
         log.info("Handle Available Status Requested, Returning True")
-        return True, 0
+
+        return True, SERIAL_BUFFER_SIZE
 
     @bp_handler(['_ZN14HardwareSerial17availableForWriteEv'])
     def handle_write_status(self, qemu, bp_addr):
         log.info("Handle Write Status Requested, Returning True")
-        return True, 0
+        return True, SERIAL_BUFFER_SIZE - 1 + (self.buffer_head)
 
-
+    # Arduino code does not flush immediately. We will, and just track 
+    # what we are allegedly buffering, which is reset on flush.
     @bp_handler(['_ZN14HardwareSerial5writeEh'])
     def handle_write(self, qemu, bp_addr):
+        log.info("Handle Write Requested.")
         '''
             Reads the frame out of the emulated device, returns it and an 
             id for the interface(id used if there are multiple ethernet devices)
@@ -36,30 +42,25 @@ class AVR8SERIAL(BPHandler):
         string_high = qemu.regs.r25
         string_ptr = (string_low | string_high << 8)
 
-        # TODO: C-string read until 0
-        strbytes = []
-        while True:
-            byte = qemu.read_memory(string_ptr, 1, 1)
-            strbytes.append(byte)
-            if byte == 0:
-                break
+        byte = qemu.read_memory(string_ptr, 1, 1)
 
-        string_bytes = bytes(strbytes)
-        string_str = string_bytes.decode("utf-8")
-    
-        log.info("Writing: %s" % string_str)
-        
-        self.model.write(string_str)
+        log.info("Writing: %x" % (byte))
+
+        self.model.write(byte)
+        self.buffer_head += 1
         return True, 1
 
     @bp_handler(['_ZN14HardwareSerial5flushEv'])
     def handle_flush(self, qemu, bp_addr):
-        return True, 1
+        log.info("Handle Flush Requested.")
+        self.buffer_head = 0
+        return True
 
     @bp_handler(['_ZN14HardwareSerial4readEv', 
                  '_ZN14HardwareSerial4peekEv',
                  '_ZN14HardwareSerial17_tx_udr_empty_irqEv'])
     def handle_other(self, qemu, bp_addr):
+        log.info("Handle OTHER Requested.")
         return True, 0
 
 
