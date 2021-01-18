@@ -15,6 +15,7 @@ from . import bp_handler as bp_handler
 from .. import arch as arch
 
 from ..arch.cortexm.avatarqemu import ARMv7mQemuTarget
+from ..arch.avr8.avatarqemu import AVRQemuTarget
 
 log = logging.getLogger("Intercepts")
 log.setLevel(logging.DEBUG)
@@ -122,30 +123,46 @@ def register_bp_handler(qemu, intercept_desc):
     '''
     '''
 
+    archpkg = arch.arch_packagestring(qemu.architecture())
     bp_cls = get_bp_handler(intercept_desc)
 
-    if isinstance(intercept_desc['addr'], int):
-        # Clear thumb bit
-        if isinstance(qemu, ARMv7mQemuTarget):
-            log.debug("Clearing Thumb Bit on Address")
-            intercept_desc['addr'] = intercept_desc['addr'] & 0xFFFFFFFE
+    bpaddress = 0
+    try:
+        bpaddress = int(intercept_desc['addr'])
+    except Exception as e:
+        raise e
+
+    function = intercept_desc['function']
+
+    log.info("Configuring breakpoint for %s @ %x", function, bpaddress)
+
+    # Clear thumb bit
+    if isinstance(qemu, ARMv7mQemuTarget):
+        log.debug("Clearing Thumb Bit on Address")
+        bpaddress = bpaddress & 0xFFFFFFFE
+
+    if isinstance(qemu, AVRQemuTarget):
+        # AVR has the concept of word-based addressing (and this is how QEMU 
+        # emulates it.
+        bpaddress = bpaddress * 2
+
 
     if 'registration_args' in intercept_desc and \
        intercept_desc['registration_args'] != None:
-        handler = bp_cls.register_handler(intercept_desc['addr'],
+        handler = bp_cls.register_handler(bpaddress,
                                           intercept_desc['function'],
                                           **intercept_desc['registration_args'])
     else:
-        handler = bp_cls.register_handler(intercept_desc['addr'],
+        handler = bp_cls.register_handler(bpaddress,
                                           intercept_desc['function'])
 
     log.info("Registering BP Handler: %s.%s : %s" % (
-        intercept_desc['class'], intercept_desc['function'], hex(intercept_desc['addr'])))
+        intercept_desc['class'], intercept_desc['function'], hex(bpaddress)))
 
-    bp = qemu.set_breakpoint(intercept_desc['addr'])
+    bp = qemu.set_breakpoint(bpaddress)
 
     if bp < 0:
-        log.error("Setting breakpoint for func %s at %s failed." % (intercept_desc["function"], intercept_desc["addr"]))
+        log.error("Setting breakpoint for func %s at %s failed." % (intercept_desc["function"], bpaddress))
         return
 
     hal_stats.stats[bp] = dict(intercept_desc)
@@ -153,10 +170,10 @@ def register_bp_handler(qemu, intercept_desc):
     hal_stats.stats[bp]['method'] = handler.__name__
 
     bp2handler_lut[bp] = (bp_cls, handler)
-    bp2handler_addr2bp[intercept_desc["addr"]] = bp
+    bp2handler_addr2bp[bpaddress] = bp
 
     log.info("BREAKPOINT %d for func %s @ %s set." % (
-        bp, intercept_desc["function"], hex(int(intercept_desc["addr"]))
+        bp, intercept_desc["function"], hex(int(bpaddress))
     ))
 
 
@@ -189,8 +206,10 @@ def interceptor(avatar, message):
     if isinstance(qemu, ARMv7mQemuTarget):
         # TODO: THUMB bit make generic.
         pc = qemu.regs.pc & 0xFFFFFFFE  # Clear Thumb bit
-    else:
+    elif isinstance(qemu, AVRQemuTarget):
         pc = qemu.regs.pc
+    else:
+        raise Exception("Not Implemented")
 
     try:
         cls, method = bp2handler_lut[bp]
@@ -248,7 +267,9 @@ def traphandler(avatar, message):
         qemu.cont()
         return
 
-    bp = bp2handler_addr2bp.get(message.address, 0)
+    bp = bp2handler_addr2bp[message.address]
+    log.info("SIGTRAP at address %x PC=%x Translated Num=%d" % (message.address, qemu.regs.pc, bp))
+    log.info(bp2handler_addr2bp)
 
     try:
         cls, method = bp2handler_lut[bp]
@@ -258,7 +279,7 @@ def traphandler(avatar, message):
         return
 
 
-
+    
     hal_stats.stats[bp]['count'] += 1
     hal_stats.write_on_update(
         'used_intercepts', hal_stats.stats[bp]['function'])
@@ -274,9 +295,10 @@ def traphandler(avatar, message):
 
     if intercept:
 
+        log.info("Executing Return")
         abipkg = importlib.import_module("halucinator.arch.%s.abi" % archpkg)
-        abipkg.function_return_transform(ret_value, qemu.regs)
-        # qemu.exec_return(ret_value)
+        abipkg.function_return_transform(ret_value, qemu.regs, qemu)
+        #qemu.exec_return(ret_value)
 
     qemu.cont()
 

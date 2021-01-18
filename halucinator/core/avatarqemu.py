@@ -170,7 +170,7 @@ def get_entry_and_init_sp(config, base_dir, archimpl):
     init_filename = get_memory_backing_file(init_memory_section , base_dir)
 
     init_sp, entry_addr = archimpl.fwimg.get_sp_and_entry(init_filename)
-    print("--------", entry_addr)
+    log.info("ENTRY ADDR=%x   INIT_SP=%x", entry_addr, init_sp)
     return init_sp, entry_addr
 
 
@@ -196,8 +196,12 @@ def override_addresses(config, address_file):
             f_name = intercept['function']
             # Update address if in address list
             if f_name in func2addr_lut:
-                intercept['addr'] = (func2addr_lut[f_name] &
-                                    0xFFFFFFFE)  # clear thumb bit
+
+                if config["ARCHDEF"] == arch.Architecture.CORTEXM:
+                    intercept['addr'] = (func2addr_lut[f_name] &
+                                         0xFFFFFFFE)  # clear thumb bit
+                else:
+                    intercept['addr'] = func2addr_lut[f_name]
                 log.info("Replacing address for %s with %s " %
                         (f_name, hex(func2addr_lut[f_name])))
             elif 'addr' not in intercept:
@@ -214,7 +218,7 @@ def override_addresses(config, address_file):
     return base_addr, entry_addr
 
 def emulate_binary(config, base_dir, log_basic_blocks=None,
-                   gdb_port=1234, elf_file=None, db_name=None):
+                   gdb_port=1234, elf_file=None, db_name=None, addressfile=None):
 
     tx_port = config["ipc"].get("tx_port", 5556)
     rx_port = config["ipc"].get("rx_port", 5555)
@@ -230,7 +234,10 @@ def emulate_binary(config, base_dir, log_basic_blocks=None,
         else:
             log.ERROR("Did not recognize architecture %s. Please specify a known architecture." % archstring)
         quit(1)
-        
+    
+    if addressfile:
+        override_addresses(config, addressfile)
+
     # AV TODO: this is a little bit ugly. Ideally, we would not use 
     # python modules for this, but archimpl would be a class.
     # However this leaves us the flexibility to define functions and 
@@ -290,6 +297,7 @@ def emulate_binary(config, base_dir, log_basic_blocks=None,
     added_classes = []
 
     interceptlist = config.get('intercepts', [])
+    print(interceptlist)
     if interceptlist:
         for intercept in interceptlist:
             log.info("Intercept: Intercept Memory Configuration %s" % (intercept["function"]))

@@ -16,7 +16,7 @@ log.setLevel(logging.DEBUG)
 
 # Register the pub/sub calls and methods that need mapped
 @peripheral_server.peripheral_model
-class SerialPublisher(object):
+class RS232Publisher(object):
     rx_buffer = list()
 
     @classmethod

@@ -55,7 +55,7 @@ class ELFParser(object):
         if self.arch == Architecture.CORTEXM:
             return 0xFFFFFFFE
         elif self.arch == Architecture.AVR8:
-            return 0x0000FFFF
+            return 0x0003FFFF
         else:
             raise Exception("Unknown Architecture")
 

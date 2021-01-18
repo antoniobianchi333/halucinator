@@ -25,8 +25,4 @@ def get_sp_and_entry(binary_filename):
     if jump != 0x940c:
         raise Exception("Entry format is invalid. Entry bytes are 0x%x 0x%x" % (jump,entry))
 
-    print("********* ENTRY **********")
-    print(str(hex(entry)))
-    print("********* ENTRY **********")
-
-    return sp, entry
+    return sp, entry*2

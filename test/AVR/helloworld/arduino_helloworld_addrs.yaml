@@ -2,6 +2,7 @@ architecture: AVR
 base_address: 0
 entry_point: 0
 symbols:
+  93: __RESET
   122: pinMode.constprop.5
   178: digitalWrite.constprop.3
   322: _ZN14HardwareSerial17availableForWriteEv

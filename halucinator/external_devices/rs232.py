@@ -18,7 +18,7 @@ class RS232PrintServer(object):
             'Peripheral.RS232Publisher.write', self.write_handler)
 
     def write_handler(self, ioserver, msg):
-        print(msg, end=' ', flush=True)
+        print("%s" % chr(msg["data"]), end=' ', flush=True)
 
 #    def send_data(self, id, chars):
 #        d = {'id': id, 'chars': chars}
