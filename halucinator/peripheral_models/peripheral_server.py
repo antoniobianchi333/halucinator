@@ -9,7 +9,7 @@ from multiprocessing import Process
 import logging
 
 log = logging.getLogger("PeripheralServer")
-log.setLevel(logging.DEBUG)
+log.setLevel(logging.WARN)
 
 __rx_handlers__ = {}
 __rx_context__ = zmq.Context()

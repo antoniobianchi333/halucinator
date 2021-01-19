@@ -12,7 +12,7 @@ from threading import Thread, Event
 import binascii
 import logging
 log = logging.getLogger("IOServer")
-log.setLevel(logging.DEBUG)
+log.setLevel(logging.WARN)
 
 
 class IOServer(Thread):

@@ -9,7 +9,7 @@ from argparse import ArgumentParser, REMAINDER
 
 
 log = logging.getLogger("Halucinator-Peripheral")
-log.setLevel(logging.DEBUG)
+log.setLevel(logging.WARN)
 
 """
 This function is the entrypoint for the halucinator-periph command. 
@@ -25,7 +25,7 @@ def main():
 
     args = vars(p.parse_args())
 
-    print(args)
+    #print(args)
     module = None
     modulename = args.get("module", "")
     if modulename != "":
@@ -50,4 +50,5 @@ def main():
         log.critical("No main function in module")
         exit(1)
 
+    print("Launching peripheral in module %s" % modulename)
     mainfunc(args.get("remainder"))

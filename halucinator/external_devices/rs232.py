@@ -7,9 +7,9 @@ import zmq
 from ..peripheral_models.peripheral_server import encode_zmq_msg, decode_zmq_msg
 from .ioserver import IOServer
 import logging
-log = logging.getLogger("RS232Server")
-log.setLevel(logging.DEBUG)
 
+log = logging.getLogger("RS232Server")
+log.setLevel(logging.WARN)
 
 class RS232PrintServer(object):
     def __init__(self, ioserver):
@@ -18,7 +18,10 @@ class RS232PrintServer(object):
             'Peripheral.RS232Publisher.write', self.write_handler)
 
     def write_handler(self, ioserver, msg):
-        print("%s" % chr(msg["data"]), end=' ', flush=True)
+        stringbytes = msg["data"]
+        for sb in stringbytes:
+            print("%c" % chr(sb), end='', flush=True)
+        #print("%s" % chr(msg["data"]), end=' ', flush=True)
 
 #    def send_data(self, id, chars):
 #        d = {'id': id, 'chars': chars}

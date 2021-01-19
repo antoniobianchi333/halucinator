@@ -293,11 +293,16 @@ def traphandler(avatar, message):
         # emulation is now in an inconsistent state, potentially.
         raise
 
+    explode = False
+
+    if type(intercept) == list or type(intercept) == tuple:
+        intercept, explode=intercept
+
     if intercept:
 
         log.info("Executing Return")
         abipkg = importlib.import_module("halucinator.arch.%s.abi" % archpkg)
-        abipkg.function_return_transform(ret_value, qemu.regs, qemu)
+        abipkg.function_return_transform(ret_value, qemu.regs, qemu, explode)
         #qemu.exec_return(ret_value)
 
     qemu.cont()

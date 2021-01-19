@@ -10,7 +10,7 @@ import halucinator.core.avatarqemu as avatar
 
 
 log = logging.getLogger("Halucinator")
-log.setLevel(logging.DEBUG)
+log.setLevel(logging.WARN)
 avalog = logging.getLogger("avatar")
 avalog.setLevel(logging.WARN)
 pslog = logging.getLogger("PeripheralServer")
