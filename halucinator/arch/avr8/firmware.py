@@ -4,6 +4,30 @@
 
 from struct import unpack
 
+class FirmwareImage(object):
+
+    def __init__(self, filename='', *args, **kwargs):
+        self.filename = filename
+
+    def _entry_sp(self):
+        with open(binary_filename, 'rb') as bin_file:
+            # https://docs.python.org/3/library/struct.html#format-characters
+            jump, entry = unpack('<HH', bin_file.read(4))
+        if jump != 0x940c:
+            raise Exception("Entry format is invalid. Entry bytes are 0x%x 0x%x" % (jump,entry))
+        
+        self.entry = entry
+
+    def entrypoint(self):
+        if  self.entry == None:
+            self._entry_sp()
+
+        return self.entry*2
+
+    def stackpointer(self):
+        self.stack_pointer = 0x08FF
+        return self.stack_pointer
+
 def get_sp_and_entry(binary_filename):
     '''
     Gets the initial stack pointer and entry point from the filename

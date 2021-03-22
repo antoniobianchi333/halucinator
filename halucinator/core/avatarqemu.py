@@ -18,7 +18,7 @@ from avatar2 import Avatar, QemuTarget, TargetStates
 from avatar2.peripherals.avatar_peripheral import AvatarPeripheral
 
 from .. import arch
-from ..arch.avatarqemu import AVATARQEMULUT
+from ..arch.avatarqemu import arch_package
 from ..config import *
 from ..config.gdb import gdb_find
 from ..util import hexyaml
@@ -70,7 +70,7 @@ def setup_memory(avatar, name, memory, base_dir=None, record_memories=None):
             record_memories.append((memory['base_addr'], memory['size']))
 
 # This can stay here:
-def emulator_init(config, archimpl, name, entry_addr, firmware=None, log_basic_blocks=False,
+def emulator_init(config, architecture, name, entry_addr, firmware=None, log_basic_blocks=False,
                     output_base_dir='', gdb_port=1234):
 
     # Locate binaries:
@@ -87,10 +87,10 @@ def emulator_init(config, archimpl, name, entry_addr, firmware=None, log_basic_b
     log.info("* Entry Address = 0x%08x" % (entry_addr))
 
     # LUT: QEMU_ARCH_LUT={'cortex-m3': ARMv7mQemuTarget, 'arm': ARMQemuTarget}
-    # AV: archimpl now sets its avatarqemu.emulator variable to the class 
+    # AV: architecture now sets its avatarqemu.emulator variable to the class 
     # name it uses as its Qemu class. 
-    qemu_target = archimpl.avatarqemu.emulator
-    avatararch  = archimpl.avatarqemu.resolve_avatar_cpu(config)
+    qemu_target = architecture.avatarqemu.emulator
+    avatararch  = architecture.avatarqemu.resolve_avatar_cpu(config)
     # Set up Avatar:
     avatar = Avatar(arch=avatararch, output_directory=outdir)
     qemu = avatar.add_target(qemu_target,
@@ -141,7 +141,7 @@ def setup_peripheral(avatar, name, per, base_dir=None):
 
 
 
-def get_entry_and_init_sp(config, base_dir, archimpl):
+def get_entry_and_init_sp(config, base_dir, architecture):
     '''
     Gets the entry point and the initial SP.
     This is a work around because AVATAR-QEMU does not init Cortex-M3
@@ -169,7 +169,7 @@ def get_entry_and_init_sp(config, base_dir, archimpl):
     init_memory_section = config['memory_map'][init_memory_key]
     init_filename = get_memory_backing_file(init_memory_section , base_dir)
 
-    init_sp, entry_addr = archimpl.fwimg.get_sp_and_entry(init_filename)
+    init_sp, entry_addr = architecture.fwimg.get_sp_and_entry(init_filename)
     log.info("ENTRY ADDR=%x   INIT_SP=%x", entry_addr, init_sp)
     return init_sp, entry_addr
 
@@ -239,18 +239,18 @@ def emulate_binary(config, base_dir, log_basic_blocks=None,
         override_addresses(config, addressfile)
 
     # AV TODO: this is a little bit ugly. Ideally, we would not use 
-    # python modules for this, but archimpl would be a class.
+    # python modules for this, but architecture would be a class.
     # However this leaves us the flexibility to define functions and 
     # generic support across architectures, so we'll leave it 
     # alone for now.
-    archimpl = AVATARQEMULUT[config["ARCHDEF"]]
+    architecture = arch_package[config["ARCHDEF"]]
 
-    init_sp, entry_addr = get_entry_and_init_sp(config, base_dir, archimpl)
+    init_sp, entry_addr = get_entry_and_init_sp(config, base_dir, architecture)
     periph_server.base_dir = base_dir
     log.info("Entry Addr: 0x%08x,  Init_SP 0x%08x" % (entry_addr, init_sp))
 
     avatar, qemu = emulator_init(config, 
-                                 archimpl,
+                                 architecture,
                                  target_name,
                                  entry_addr,
                                  log_basic_blocks=log_basic_blocks,
@@ -270,7 +270,7 @@ def emulate_binary(config, base_dir, log_basic_blocks=None,
         setup_memory(avatar, name, memory, base_dir, record_memories)
 
     # Add memory needed for returns
-    archimpl.avatarqemu.add_patch_memory(avatar)
+    architecture.avatarqemu.add_patch_memory(avatar)
 
     # Add recorder to avatar
     # Used for debugging peripherals
@@ -345,8 +345,8 @@ def emulate_binary(config, base_dir, log_basic_blocks=None,
             
 
     qemu.init_sp = init_sp
-    archimpl.avatarqemu.arch_specific_setup(config, qemu)
-    archimpl.avatarqemu.write_patch_memory(qemu)
+    architecture.avatarqemu.arch_specific_setup(config, qemu)
+    architecture.avatarqemu.write_patch_memory(qemu)
     
 
     def signal_handler(signum,frame):
@@ -379,6 +379,6 @@ class AvatarQemuRehost(HalucinatorRehost):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-
+        
 
 

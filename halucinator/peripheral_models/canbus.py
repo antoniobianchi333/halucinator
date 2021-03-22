@@ -14,6 +14,73 @@ import time
 log = logging.getLogger("CANBUSModel")
 log.setLevel(logging.DEBUG)
 
+# CAN Frames are detailed here: https://en.wikipedia.org/wiki/CAN_bus
+
+
+def can_crc15(framebytes):
+    pass
+
+""" CAN 2.0 A (11-bit ID) Frame """
+class CANFrame(object):
+
+    def __init__(self, framebytes):
+        pass
+
+""" CAN 2.0 A (11-bit ID) Frame """
+class CANFrameExtended(object):
+
+    def __init__(self, framebytes):
+        pass
+
+
+    def __repr__(self):
+        rep = ''
+        
+        def binary(word):
+            '{0:b}'.format(word)
+
+
+    @classmethod
+    def try_decode_frame(framebytes):
+
+        if len(framebytes) < 8:
+            raise Exception("Frame size is not long enough")
+        id_extension_bit = framebytes[0] & 0x04
+
+        if id_extension_bit != 1:
+            raise Exception("ID bit must be recessive (1) for extended frames")
+
+        id_extension=1
+
+        identifier_part_a = framebytes[0] & 0x7FF0
+
+        identifier_part_b1 = framebytes[0] & 0x0003
+        identifier_part_b2 = framebytes[1] 
+        identifier_part_b = (identifier_part_b1 << 16) | identifier_part_b2
+        identifier = identifier_part_a << 18 | identifier_part_b
+
+        datalen = framebytes[2] & 0x1E00
+        if datalen < 0 or datalen > 8:
+            raise Exception("Datalen parsing error")
+    
+        databits = 8*datalen
+
+
+        self.frame = framebytes:
+
+def ParseCANFrame(framebytes):
+
+    frame = CANFrameExtended.try_decode_frame(framebytes)
+    if frame is not None:
+        return frame
+
+    frame = CANFrame.try_decode_frame(framebytes)
+    if frame is not None:
+        return frame
+
+    raise Exception("Unable to parse CAN Frame")
+
+
 # Register the pub/sub calls and methods that need mapped
 @peripheral_server.peripheral_model
 class CANPublisher(object):

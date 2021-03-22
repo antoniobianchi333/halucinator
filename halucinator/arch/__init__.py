@@ -26,6 +26,11 @@ def arch_register(regex, architecture, properties):
 def arch_packagestring(archenum):
     return ArchPkgMap[archenum]
 
+def arch_package(archenum):
+    pkg_string = arch_packagestring(archenum)
+
+    return importlib.import_module(pkg_string, ".") 
+
 def arch_find(archstr):
     for regex, enum, props in architecture_list:
         if re.match(regex, archstr.lower()):
