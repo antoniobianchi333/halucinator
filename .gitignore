@@ -2,7 +2,14 @@ halenv/*
 *~
 .*.sw*
 *.bak
-
 __pycache__
 *.egg-info
-
+*.o
+*.so
+*.elf
+*.bin
+*.til
+*.nam
+*.id0
+*.id1
+*.id2
