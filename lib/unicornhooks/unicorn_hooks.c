@@ -1,6 +1,6 @@
 /* Low level hal-fuzz hooks implemented natively for performance reasons */
 
-#include "native_hooks.h"
+#include "unicorn_hooks.h"
 #include "util.h"
 #include "nvic.h"
 

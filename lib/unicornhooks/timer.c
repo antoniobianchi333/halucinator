@@ -1,7 +1,7 @@
 #include <unicorn/unicorn.h>
 #include "timer.h"
 #include <string.h>
-#include "native_hooks.h"
+#include "unicorn_hooks.h"
 #include "nvic.h"
 
 #define MAX_TIMERS 32

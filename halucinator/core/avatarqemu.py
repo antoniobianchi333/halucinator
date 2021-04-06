@@ -18,7 +18,7 @@ from avatar2 import Avatar, QemuTarget, TargetStates
 from avatar2.peripherals.avatar_peripheral import AvatarPeripheral
 
 from .. import arch
-from ..arch.avatarqemu import arch_package
+from ..arch import arch_package
 from ..config import *
 from ..config.gdb import gdb_find
 from ..util import hexyaml
@@ -169,7 +169,7 @@ def get_entry_and_init_sp(config, base_dir, architecture):
     init_memory_section = config['memory_map'][init_memory_key]
     init_filename = get_memory_backing_file(init_memory_section , base_dir)
 
-    init_sp, entry_addr = architecture.fwimg.get_sp_and_entry(init_filename)
+    init_sp, entry_addr = architecture.firmware.get_sp_and_entry(init_filename)
     log.info("ENTRY ADDR=%x   INIT_SP=%x", entry_addr, init_sp)
     return init_sp, entry_addr
 
@@ -243,7 +243,7 @@ def emulate_binary(config, base_dir, log_basic_blocks=None,
     # However this leaves us the flexibility to define functions and 
     # generic support across architectures, so we'll leave it 
     # alone for now.
-    architecture = arch_package[config["ARCHDEF"]]
+    architecture = arch_package(config["ARCHDEF"])
 
     init_sp, entry_addr = get_entry_and_init_sp(config, base_dir, architecture)
     periph_server.base_dir = base_dir

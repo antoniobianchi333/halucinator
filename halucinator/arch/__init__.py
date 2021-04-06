@@ -29,7 +29,8 @@ def arch_packagestring(archenum):
 def arch_package(archenum):
     pkg_string = arch_packagestring(archenum)
 
-    return importlib.import_module(pkg_string, ".") 
+    importname = "%s.%s" % (__name__, pkg_string) 
+    return importlib.import_module(importname) 
 
 def arch_find(archstr):
     for regex, enum, props in architecture_list:

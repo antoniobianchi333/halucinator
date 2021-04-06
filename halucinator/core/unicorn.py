@@ -8,10 +8,11 @@ import types
 from .handlers import add_block_hook
 import struct
 from collections import defaultdict
+from .interactive import interactive_break as ibreak
 
 # SparklyUnicorn: A syntactic wrapper for working with Unicorn's objects that does not make my head hurt
 
-class SparklyRegs(object):
+class UnicornRegisters(object):
 
     _uc = None
 
@@ -19,16 +20,15 @@ class SparklyRegs(object):
         self._uc = uc
 
     def __getattribute__(self, regname):
-        myuc = object.__getattribute__(self, '_uc')
         for x in dir(unicorn.arm_const):
             if x.endswith('_' + regname.upper()):
-                return myuc.reg_read(getattr(unicorn.arm_const, x))
+                return self._uc.reg_read(getattr(unicorn.arm_const, x))
         return object.__getattribute__(self, regname)
 
     def get_all(self):
         out = {}
-        myuc = object.__getattribute__(self, '_uc')
-        for reg in myuc.arch.register_list:
+        self._uc = object.__getattribute__(self, '_uc')
+        for reg in self._uc.arch.register_list:
             if not reg.artificial:
                 n = reg.name
                 try:
@@ -42,17 +42,15 @@ class SparklyRegs(object):
     def __setattr__(self, regname, val):
         if regname == "_uc":
             object.__setattr__(self, regname, val)
-        myuc = object.__getattribute__(self, '_uc')
+        
         for x in dir(unicorn.arm_const):
             if x.endswith('_' + regname.upper()):
-                return myuc.reg_write(getattr(unicorn.arm_const, x), val)
+                return self._uc.reg_write(getattr(unicorn.arm_const, x), val)
         return object.__getattribute__(self, regname)
 
     def __repr__(self):
-        myuc = object.__getattribute__(self, '_uc')
-
         s = "Unicorn Registers:\n----------------\n"
-        for reg in myuc.arch.register_list:
+        for reg in self._uc.arch.register_list:
             if not reg.artificial:
                 n = reg.name
                 try:
@@ -63,7 +61,7 @@ class SparklyRegs(object):
         return s
 
 
-class SparklyMem(object):
+class UnicornMemory(object):
 
     _uc = None
 
@@ -71,22 +69,21 @@ class SparklyMem(object):
         self._uc = uc
 
     def __getitem__(self, key):
-        myuc = object.__getattribute__(self, '_uc')
         if isinstance(key, slice):
-            return myuc.mem_read(key.start, (key.stop-key.start))
+            return self._uc.mem_read(key.start, (key.stop-key.start))
             # todo, striding support
         else:
-            return myuc.mem_read(key, 4)
+            return self._uc.mem_read(key, 4)
             # TODO: Word size via archinfo
 
     def __setitem__(self, key, value):
         if isinstance(value, bytes):
-            myuc.mem_write(key, value)
+            self._uc.mem_write(key, value)
         else:
             raise ValueError("Must be a bytes object")
 
 
-class SparklyStack(object):
+class UnicornStack(object):
 
     _uc = None
 
@@ -94,19 +91,17 @@ class SparklyStack(object):
         self._uc = uc
 
     def __getitem__(self, key):
-        myuc = object.__getattribute__(self, '_uc')
-        sp = myuc.reg_read(unicorn.arm_const.UC_ARM_REG_SP)
+        sp = self._uc.reg_read(unicorn.arm_const.UC_ARM_REG_SP)
         if isinstance(key, slice):
-            return myuc.mem_read(sp + key.start, (key.stop-key.start))
+            return self._uc.mem_read(sp + key.start, (key.stop-key.start))
             # todo, striding support
         else:
-            return myuc.mem_read(sp + key, 4)
+            return self._uc.mem_read(sp + key, 4)
             # TODO: Word size via archinfo
 
     def __setitem__(self, key, value):
-        myuc = object.__getattribute__(self, '_uc')
         if isinstance(value, bytes):
-            myuc.mem_write(sp + key, value)
+            self._uc.mem_write(sp + key, value)
         else:
             raise ValueError("Must be a bytes object")
 
@@ -115,12 +110,11 @@ class SparklyStack(object):
             print("WARNING: Dude, the stack on ARM is word-aligned! Did you skip ARM day?")
             start -= start % 4
             end -= end % 4
-        myuc = object.__getattribute__(self, '_uc')
         data = self[start:end]
-        sp = myuc.regs.sp
+        sp = self._uc.regs.sp
         start_addr = sp+start
         end_addr = sp+end
-        regs = myuc.regs.get_all()
+        regs = self._uc.regs.get_all()
 
         points_to = defaultdict(list)
         for reg, val in regs.items():
@@ -139,22 +133,26 @@ class SparklyStack(object):
     def pp(self, start, end, downward=False):
         print(self._pp(start, end, downward))
 
-def step(self, fancy=False):
-    curpc = self.reg_read(unicorn.arm_const.UC_ARM_REG_PC)
-    result = self.emu_start(curpc | 1, 0, timeout=0, count=1)
-    newpc = self.reg_read(unicorn.arm_const.UC_ARM_REG_PC)
-    size = newpc - curpc
-    if fancy:
-        cs = self.arch.capstone
-        mem = self.mem_read(curpc, 4) # TODO: FIXME
-        insns = list(cs.disasm_lite(bytes(mem), size))
-        for (cs_address, cs_size, cs_mnemonic, cs_opstr) in insns[:1]:
-            print("    Instr: {:#08x}:\t{}\t{}".format(curpc, cs_mnemonic, cs_opstr))
 
-def break_it(uc):
-    print(repr(uc.stack))
-    print(repr(uc.regs))
-    import ipdb; ipdb.set_trace()
+class UnicornEmulator(object, UnicornRegisters, UnicornMemory, UnicornStack):
+
+    def __init__(self, uc):
+        self._uc = uc
+
+
+
+    def step(self, fancy=False):
+        curpc = self.reg_read(unicorn.arm_const.UC_ARM_REG_PC)
+        result = self.emu_start(curpc | 1, 0, timeout=0, count=1)
+        newpc = self.reg_read(unicorn.arm_const.UC_ARM_REG_PC)
+        size = newpc - curpc
+        if fancy:
+            cs = self.arch.capstone
+            mem = self.mem_read(curpc, 4) # TODO: FIXME
+            insns = list(cs.disasm_lite(bytes(mem), size))
+            for (cs_address, cs_size, cs_mnemonic, cs_opstr) in insns[:1]:
+                print("    Instr: {:#08x}:\t{}\t{}".format(curpc, cs_mnemonic, cs_opstr))
+
 
 def add_breakpoint(addr):
     global breakpoints
@@ -178,7 +176,7 @@ def breakpoint_handler(uc, address, size, user_data):
         break_it(uc)
 
 
-def add_sparkles(uc, args):
+def unicorn_add_wrappers(uc, args):
     global breakpoints
     uc.regs = SparklyRegs(uc)
     uc.mem = SparklyMem(uc)

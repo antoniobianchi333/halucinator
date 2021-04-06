@@ -1,3 +1,3 @@
 
 from .avatarqemu import *
-from .fwimg import *
+from .firmware import *

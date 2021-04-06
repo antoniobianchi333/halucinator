@@ -1,5 +1,5 @@
 #include "interrupt_triggers.h"
-#include "native_hooks.h"
+#include "unicorn_hooks.h"
 #include "nvic.h"
 
 #define MAX_INTERRUPT_TRIGGERS 256

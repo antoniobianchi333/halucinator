@@ -1,6 +1,6 @@
 #include <unicorn/unicorn.h>
 #include "nvic.h"
-#include "native_hooks.h"
+#include "unicorn_hooks.h"
 
 /*
 Basic interrupt controller implementation which is expected to

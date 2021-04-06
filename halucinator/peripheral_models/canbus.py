@@ -62,9 +62,9 @@ class CANFrameExtended(object):
         datalen = framebytes[2] & 0x1E00
         if datalen < 0 or datalen > 8:
             raise Exception("Datalen parsing error")
-    
-        databits = 8*datalen
 
+        databits = 8*datalen
+        
 
         self.frame = framebytes:
 

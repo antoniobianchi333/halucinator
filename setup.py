@@ -23,7 +23,7 @@ def get_packages(rel_dir):
 
 setup(
     name='halucinator',
-    version='1.0e',
+    version='1.0f',
     description='Emulation and rehosting framework',
     author='Abe Clements and Eric Gustafson',
     author_email='',
@@ -34,6 +34,7 @@ setup(
             'halucinator-periph = halucinator.commands.peripheral:main',
             'halucinator-rehost = halucinator.commands.rehost:main',
             'halucinator-symtool = halucinator.commands.halsymtool:main',
+            'halucinator-addr2cfg = halucinator.commands.halsymcfg:main',
             'halucinator-mmiofind = halucinator.commands.halmmiofind:main',
             'ghalucinator = halucinator.commands.gui:main'
         ]
