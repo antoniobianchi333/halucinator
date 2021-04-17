@@ -193,7 +193,7 @@ def interceptor(avatar, message):
 
     bp = int(message.breakpoint_number)
     qemu = message.origin
-    archpkg = arch.arch_packagestring(qemu.architecture())
+    archpkg = arch.arch_package(qemu.architecture())
 
     if len(bp2handler_lut.items()) == 0:
 
@@ -233,7 +233,7 @@ def interceptor(avatar, message):
 
     if intercept:
 
-        abipkg = importlib.import_module("halucinator.arch.%s.abi")
+        abipkg = archpkg.abi 
         abipkg.function_return_transform(ret_value, qemu.regs)
         # qemu.exec_return(ret_value)
 

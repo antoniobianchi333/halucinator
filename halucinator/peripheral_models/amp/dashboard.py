@@ -1,3 +1,4 @@
+
 # Copyright 2019 National Technology & Engineering Solutions of Sandia, LLC (NTESS). 
 # Under the terms of Contract DE-NA0003525 with NTESS, the U.S. Government retains 
 # certain rights in this software.
@@ -11,17 +12,13 @@ import logging
 from itertools import repeat
 import time
 
-log = logging.getLogger("CANBUSModel")
+log = logging.getLogger("AmpDashModel")
 log.setLevel(logging.DEBUG)
-
-
-
 
 # Register the pub/sub calls and methods that need mapped
 @peripheral_server.peripheral_model
-class CanBus(object):
-
-    rx_queue = defaultdict(deque)
+class AmpDashModel(object):
+    rx_buffers = defaultdict(deque)
 
     @classmethod
     @peripheral_server.tx_msg
@@ -32,7 +29,7 @@ class CanBus(object):
         and sends it to the emulated peripheral directly.
         """
         log.debug("In: CanBus.write: %s" % chars)
-        msg = {'id': CAN_id, 'data': chars}
+        msg = {'id': CAN_id, 'chars': chars}
         return msg
     
     @classmethod
@@ -46,10 +43,7 @@ class CanBus(object):
         log.debug("rx_data got message: %s" % str(msg))
         canid = msg['id']
         data = msg['data']
-
-        devmsg = {'extid': canid,
-                  'data': data}
-        cls.rx_queue[canid].append(devmsg)
+        cls.rx_buffers[canid].extend(data)
 
     @classmethod
     def read(cls, CAN_id, count=1, block=False):
@@ -63,11 +57,10 @@ class CanBus(object):
         """
         log.debug("In: CanBus.read id:%s count:%i, block:%s" %
                   (hex(CAN_id), count, str(block)))
-        while block and (len(cls.rx_queue[CAN_id]) < count):
+        while block and (len(cls.rx_buffers[CAN_id]) < count):
             pass
         log.debug("Done Blocking: CanBus.read")
-        
-        buffer = cls.rx_queue[CAN_id]
+        buffer = cls.rx_buffers[CAN_id]
         chars_available = len(buffer)
         if chars_available >= count:
             chars = [buffer.popleft() for _ in range(count)]

@@ -1,7 +1,48 @@
 architecture: cortex-m3
 intercepts:
 
-intercepts:
+# ------------------------------- Base ------------------------------------
+#- class: halucinator.bp_handlers.stm32f4.stm32f4_spi.STM32F4SPI
+#  function: HAL_SPI_Init
+
+- class: halucinator.bp_handlers.stm32f4.stm32f4_base.STM32F4_Base
+  function: HAL_Init
+- class: halucinator.bp_handlers.stm32f4.stm32f4_base.STM32F4_Base
+  function: HAL_InitTick
+- class: halucinator.bp_handlers.stm32f4.stm32f4_base.STM32F4_Base
+  function: HAL_RCC_OscConfig
+- class: halucinator.bp_handlers.stm32f4.stm32f4_base.STM32F4_Base
+  function: SystemClock_Config
+- class: halucinator.bp_handlers.stm32f4.stm32f4_base.STM32F4_Base
+  function: HAL_RCC_ClockConfig
+- class: halucinator.bp_handlers.stm32f4.stm32f4_base.STM32F4_Base
+  function: HAL_SYSTICK_Config
+- class: halucinator.bp_handlers.stm32f4.stm32f4_base.STM32F4_Base
+  function: HAL_SYSTICK_CLKSourceConfig
+- class: halucinator.bp_handlers.stm32f4.stm32f4_base.STM32F4_Base
+  function: SystemInit
+
+# ------------------------------- TIM ------------------------------------
+- class: halucinator.bp_handlers.stm32f4.stm32f4_tim.STM32_TIM
+  function: HAL_Delay
+- class: halucinator.bp_handlers.stm32f4.stm32f4_tim.STM32_TIM
+  function: HAL_TIM_Base_Init
+- class: halucinator.bp_handlers.stm32f4.stm32f4_tim.STM32_TIM
+  function: HAL_TIM_Base_Start_IT
+- class: halucinator.bp_handlers.stm32f4.stm32f4_tim.STM32_TIM
+  function: HAL_TIM_DeInit
+- class: halucinator.bp_handlers.stm32f4.stm32f4_tim.STM32_TIM
+  function: HAL_TIM_Base_Stop_IT
+- class: halucinator.bp_handlers.stm32f4.stm32f4_tim.STM32_TIM
+  function: HAL_TIM_ConfigClockSource
+- class: halucinator.bp_handlers.stm32f4.stm32f4_tim.STM32_TIM
+  function: HAL_TIM_IRQHandler
+- class: halucinator.bp_handlers.stm32f4.stm32f4_tim.STM32_TIM
+  function: HAL_TIMEx_MasterConfigSynchronization
+- class: halucinator.bp_handlers.stm32f4.stm32f4_tim.STM32_TIM
+  function: HAL_TIM_ConfigClockSource
+
+
 - addr: 0x8000248
   class: halucinator.bp_handlers.generic.armv7m_param_log.ARMv7MEABILogger
   function: _ZN6BumperC2EP17TIM_HandleTypeDefPVm
@@ -134,6 +175,8 @@ intercepts:
 - addr: 0x8001798
   class: halucinator.bp_handlers.generic.armv7m_param_log.ARMv7MEABILogger
   function: HAL_RCC_GetPCLK1Freq
+
+
 - addr: 0x8001918
   class: halucinator.bp_handlers.generic.armv7m_param_log.ARMv7MEABILogger
   function: HAL_TIM_Base_Start_IT
@@ -176,6 +219,7 @@ intercepts:
 - addr: 0x8001e7c
   class: halucinator.bp_handlers.generic.armv7m_param_log.ARMv7MEABILogger
   function: HAL_TIM_PWM_Start
+
 - addr: 0x8001e84
   class: halucinator.bp_handlers.generic.armv7m_param_log.ARMv7MEABILogger
   function: HAL_TIMEx_MasterConfigSynchronization
@@ -185,6 +229,8 @@ intercepts:
 - addr: 0x8001ee2
   class: halucinator.bp_handlers.generic.armv7m_param_log.ARMv7MEABILogger
   function: HAL_TIMEx_BreakCallback
+
+
 - addr: 0x8001ee4
   class: halucinator.bp_handlers.generic.armv7m_param_log.ARMv7MEABILogger
   function: UART_SetConfig
