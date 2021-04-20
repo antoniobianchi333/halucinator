@@ -2,11 +2,15 @@
 # Under the terms of Contract DE-NA0003525 with NTESS, the U.S. Government retains 
 # certain rights in this software.
 
-import zmq
-import yaml
+
 from functools import wraps
 from multiprocessing import Process
 import logging
+import os
+import time
+import yaml
+import zmq
+
 
 log = logging.getLogger("PeripheralServer")
 log.setLevel(logging.WARN)
@@ -20,6 +24,8 @@ __tx_socket__ = None
 
 __process = None
 __qemu = None
+__pid = None
+ppid = None
 
 output_directory = None
 base_dir = None
@@ -90,6 +96,8 @@ def start(rx_port=5555, tx_port=5556, qemu=None):
     global __tx_context__
     global __rx_handlers__
     global __process
+    global __pid
+    global ppid
     global __qemu
     global output_directory
 
@@ -110,8 +118,10 @@ def start(rx_port=5555, tx_port=5556, qemu=None):
     __tx_socket__ = __tx_context__.socket(zmq.PUB)
     __tx_socket__.bind("tcp://*:%i" % tx_port)
 
-    __process = Process(target=run_server).start()
-
+    __process = Process(target=run_server, )
+    __process.start()
+    __pid = __process.pid
+    ppid = os.getpid()
 
 def trigger_interrupt(num):
     global __qemu
@@ -145,7 +155,9 @@ def run_server():
                 else:
                     log.error(
                         "Unhandled peripheral message type received: %s" % topic)
-
+                
+                    for handler in __rx_handlers__:
+                        log.error("Class %s registered" % (handler)) 
             elif topic.startswith("Interrupt.Trigger"):
                 log.info("Triggering Interrupt %s" % msg['num'])
                 trigger_interrupt(msg['num'])
@@ -160,5 +172,7 @@ def run_server():
 def stop():
     global __process
     global __stop_server
+   
     __stop_server = True
+
     __process.join()

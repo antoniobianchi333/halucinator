@@ -350,13 +350,20 @@ def emulate_binary(config, base_dir, log_basic_blocks=None,
     
 
     def signal_handler(signum,frame):
-        #try:
-        log.info("Received Signal %d, shutting down." % signum)
-        if periph_server:
-            periph_server.stop()
+        
+        pid = os.getpid()
+        print("Process %d: Received Signal %d, shutting down." % (pid, signum))
+            
+        if pid != periph_server.ppid:
+            print("Process %d: Shutdown Complete." % (pid,))
+            quit(0)
+        
+        print("Process %d: Shutting down emulators." % (pid,))
+        periph_server.stop()
+        time.sleep(1) 
         avatar.stop()
         avatar.shutdown()
-        log.info("Shutdown Complete.")
+        print("Process %d: Shutdown Complete." % (pid,))
         #except:
         #    pass
         quit(0)
@@ -366,9 +373,11 @@ def emulate_binary(config, base_dir, log_basic_blocks=None,
     signal.signal(signal.SIGINT, signal_handler)
     #signal.signal(signal.SIGKILL, signal_handler)
     signal.signal(signal.SIGHUP, signal_handler)
-
+    
     # Emulate the Binary
     periph_server.start(rx_port, tx_port, qemu)
+    
+
     # import os; os.system('stty sane') # Make so display works
     # import IPython; IPython.embed()
     qemu.cont()
