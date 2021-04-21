@@ -11,7 +11,7 @@ import logging
 from itertools import repeat
 import time
 
-log = logging.getLogger("CANBUSModel")
+log = logging.getLogger("CanBus")
 log.setLevel(logging.DEBUG)
 
 
@@ -43,13 +43,14 @@ class CanBus(object):
         This method receives data send from the peripheral device and buffers 
         it for intercepts of the read method.
         """
+        # {'data': [0, 0, 0, 128, 12, 0, 0, 0], 'id': 16707840}
         log.debug("rx_data got message: %s" % str(msg))
         canid = msg['id']
         data = msg['data']
 
         devmsg = {'extid': canid,
                   'data': data}
-        cls.rx_queue[canid].append(devmsg)
+        cls.rx_queue[0].append(devmsg)
 
     @classmethod
     def read(cls, CAN_id, count=1, block=False):
@@ -80,7 +81,7 @@ class CanBus(object):
 
 
     @classmethod
-    def write(cls, CAN_id, count=1, data, block=False):
+    def write(cls, CAN_id, data, count=1, block=False):
         """
         This method is a firmware interception point for the peripheral device, 
         handling write events to the CANBus.

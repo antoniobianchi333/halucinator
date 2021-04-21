@@ -112,7 +112,7 @@ class CanShell(cmd2.Cmd):
 
         idx = 0xFEF1 << 8
 
-        self.candev.send_data_to_emulator(0, {'id': idx, 'data': data})
+        self.candev.send_data_to_emulator(idx, data)
 
     def do_exit(self, args):
         'Exit the virtual CAN device'

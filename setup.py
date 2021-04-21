@@ -36,6 +36,7 @@ setup(
             'halucinator-symtool = halucinator.commands.halsymtool:main',
             'halucinator-addr2cfg = halucinator.commands.halsymcfg:main',
             'halucinator-mmiofind = halucinator.commands.halmmiofind:main',
+            'halucinator-trace = halucinator.commands.haltrace:main',
             'ghalucinator = halucinator.commands.gui:main'
         ]
         },

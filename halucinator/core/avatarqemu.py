@@ -352,20 +352,17 @@ def emulate_binary(config, base_dir, log_basic_blocks=None,
     def signal_handler(signum,frame):
         
         pid = os.getpid()
-        print("Process %d: Received Signal %d, shutting down." % (pid, signum))
             
         if pid != periph_server.ppid:
-            print("Process %d: Shutdown Complete." % (pid,))
             quit(0)
         
-        print("Process %d: Shutting down emulators." % (pid,))
-        periph_server.stop()
-        time.sleep(1) 
         avatar.stop()
         avatar.shutdown()
+        periph_server.stop()
+        
+        time.sleep(1) 
+
         print("Process %d: Shutdown Complete." % (pid,))
-        #except:
-        #    pass
         quit(0)
     
     # Try to tidy up nicely if: Killed (SIGKILL), interrupted (ctrl+c) or 

@@ -3,7 +3,7 @@
 # certain rights in this software.
 
 from ...peripheral_models.interrupts import Interrupts
-from ...peripheral_models.canbus import CanModel
+from ...peripheral_models.canbus import CanBus
 from avatar2.peripherals.avatar_peripheral import AvatarPeripheral
 from ..intercepts import tx_map, rx_map
 from ..bp_handler import BPHandler, bp_handler
@@ -20,11 +20,11 @@ log.setLevel(logging.INFO)
 class STM32_CAN(BPHandler):
 
 
-    def __init__(self, model=CanModel):
+    def __init__(self, model=CanBus):
         self.model = model
-        self.name = 'STM32_CANBUS'
+        self.name = 'CanBus'
 
-    @bp_handler(['HAL_CAN_MspInit'])
+    @bp_handler(['HAL_CAN_MspInit', 'HAL_CAN_Init', 'HAL_CAN_Start'])
     def handle_init(self, qemu, bp_addr):
         handle_obj = qemu.regs.r0
         handle_base = qemu.read_memory(handle_obj, 4, 1)
@@ -68,11 +68,11 @@ class STM32_CAN(BPHandler):
         can_data_ptr = qemu.regs.r3
 
         # can message from PS
-        can_msg = self.model.rx_queue[0].popleft() # FIFO, popleft pops FI.
-        can_data = can_msg["data"]
-        can_extid = can_msg["extid"]
+        canmsg = self.model.rx_queue[0].popleft() # FIFO, popleft pops FI.
+        can_data = canmsg.get("data", None)
+        can_extid = canmsg.get("extid", 0)
 
-        if len(can_data != 8):
+        if len(can_data) != 8:
             raise Exception("Can DATA is not a valid length")
 
         # write_memory(self, address, wordsize, val, num_words=1, raw=False)
@@ -144,15 +144,16 @@ class STM32_CAN(BPHandler):
         # #define CAN_RF0R_FMP0_Pos      (0U)
         # #define CAN_RF0R_FMP0_Msk      (0x3UL << CAN_RF0R_FMP0_Pos)
         # #define CAN_RF0R_FMP0          CAN_RF0R_FMP0_Msk) 
-       
         # Only handle FIFO 0
-        if rxfifo != 3:
+        log.info("RXFIFO Queue is %d" % (rxfifo))
+        if rxfifo != 0:
             log.info("HAL_CAN_GetRxFifoFillLevel: FIFO 1 Requested, ignoring")
             return False, None
 
         queue_size = len(self.model.rx_queue[0])
-    
 
+        if queue_size!=0:
+            log.warn("RXFIFO: QUEUE SIZE: %d" % queue_size)
         # No need to do anything else
         # Report number of messages
         return True, queue_size

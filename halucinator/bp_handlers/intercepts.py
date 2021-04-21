@@ -229,6 +229,7 @@ def interceptor(avatar, message):
         log.exception("Error executing handler %s" % (repr(method)))
         # todo: alert control channels that
         # emulation is now in an inconsistent state, potentially.
+        
         raise
 
     if intercept:

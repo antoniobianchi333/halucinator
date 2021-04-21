@@ -27,7 +27,7 @@ class STM32F4_Base(BPHandler):
         self.org_lr = None
         self.current_channel = 0
         self.addr2isr_lut = {
-            '0x4000200': 0x32
+            '0x4000200': 32
         }
         self.irq_rates = {}
         self.name = 'STM32_TIM'
@@ -83,6 +83,14 @@ class STM32F4_Base(BPHandler):
         return True, 0
 
     @bp_handler(['Error_Handler'])
+    def error_handler(self, qemu, bp_addr):
+        self.model.stop_timer("SysTick")
+        self.model.stop_timer("0x40000400")
+        import ipdb
+        ipdb.set_trace()
+        return True, 0
+    
+    @bp_handler(['HardFault_Handler'])
     def error_handler(self, qemu, bp_addr):
         self.model.stop_timer("SysTick")
         self.model.stop_timer("0x40000400")
