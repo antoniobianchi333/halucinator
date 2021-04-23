@@ -225,6 +225,8 @@ def interceptor(avatar, message):
     # print method
     try:
         intercept, ret_value = method(cls, qemu, pc)
+    except BlockingIOError:
+        pass
     except:
         log.exception("Error executing handler %s" % (repr(method)))
         # todo: alert control channels that
@@ -233,7 +235,9 @@ def interceptor(avatar, message):
         raise
 
     if intercept:
-
+        if ret_value == None:
+            ret_value = 0
+        log.info("Executing return with value 0x%08x", int(ret_value))
         abipkg = archpkg.abi 
         abipkg.function_return_transform(ret_value, qemu.regs)
         # qemu.exec_return(ret_value)

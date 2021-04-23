@@ -91,7 +91,7 @@ class CanShell(cmd2.Cmd):
         # TODO: allow selecting queue to clear.
         self.candev.clear_rx_queue()     
 
-    def do_amp_sendbreak(self, args):
+    def do_amp_can_badspeed(self, args):
         'AMP: Send CAN message corresponding to break message'
         
         # send the break message expected by the firmware
@@ -104,13 +104,40 @@ class CanShell(cmd2.Cmd):
         # set brake_switch to true.
 
         #       0     1     2     3     4     5     6     7
-        data = [0x00, 0x00, 0x00, 0x80, 0x0C, 0x00, 0x00, 0x00]
+        data = [0x00, 0x00, 0xFF, 0xFF, 0x0C, 0x00, 0x00, 0x00]
 
         # cruise control vehicle speed setting:
         # PGN_CruiseControlVehicleSpeed1     0xFEF1
         # #define CAN_RX_FIFO0                (0x00000000U)
 
         idx = 0xFEF1 << 8
+
+        print("Sending speed that will decode to 65535 (uint16)/-32768 (int16)")
+
+        self.candev.send_data_to_emulator(idx, data)
+    
+    def do_amp_can_goodspeed(self, args):
+        'AMP: Send CAN message corresponding to break message'
+        
+        # send the break message expected by the firmware
+
+        #speed value is int16_t
+        #speed_value  = (buff[3] << 8) + buff[2];  // buf[3] = speed integer, buf[2] = speed decimal
+        #brake_switch = (buff[4] & 0b00001100) >> 2
+
+        # set speed value to 0x80 << 8 + 00 = -32768.
+        # set brake_switch to true.
+
+        #       0     1     2     3     4     5     6     7
+        data = [0x00, 0x00, 0x32, 0x32, 0x0C, 0x00, 0x00, 0x00]
+
+        # cruise control vehicle speed setting:
+        # PGN_CruiseControlVehicleSpeed1     0xFEF1
+        # #define CAN_RX_FIFO0                (0x00000000U)
+
+        idx = 0xFEF1 << 8
+
+        print("Sending speed that will decode to 0x3232 (50.50) (OK for int16)")
 
         self.candev.send_data_to_emulator(idx, data)
 

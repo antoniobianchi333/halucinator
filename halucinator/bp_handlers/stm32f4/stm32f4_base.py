@@ -37,6 +37,11 @@ class STM32F4_Base(BPHandler):
         log.info("### STM32 HAL INIT ###")
         return False, None
 
+    @bp_handler(['HAL_UART_Transmit'])
+    def uart_transmit(self, qemu, bp_addr):
+        log.info("### Uart Transmit NOP'D ###")
+        return True, 0
+
     @bp_handler(['SystemInit'])
     def systeminit(self, qemu, bp_addr):
         log.info("### SystemInit ###")

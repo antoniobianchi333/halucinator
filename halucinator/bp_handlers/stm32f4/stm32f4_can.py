@@ -130,6 +130,7 @@ class STM32_CAN(BPHandler):
         qemu.write_memory(can_rxheader_ptr+8, 4, 4, 1)
         qemu.write_memory(can_rxheader_ptr+4, 4, can_extid, 1)
 
+        time.sleep(2)
         # that should be enough:
 
         # define HAL_OK 0x00U; (retval)
@@ -156,4 +157,7 @@ class STM32_CAN(BPHandler):
             log.warn("RXFIFO: QUEUE SIZE: %d" % queue_size)
         # No need to do anything else
         # Report number of messages
+        
+        time.sleep(2)
+        
         return True, queue_size
