@@ -47,6 +47,38 @@ def peripheral_model(cls):
 
     return cls
 
+"""
+peripheral_model_template is a decorator that allows a class to be marked 
+as modelling a peripheral in template form: concrete instances model unique 
+peripherals and classmethod-style decoration is not supported.
+
+TODO: mark templated peripherals.
+"""
+def peripheral_model_template(cls):
+
+    @wraps(cls)
+    def wrapper_pm(*args, **kwargs):
+
+        cls.is_templated_peripheral = True
+
+        name = kwargs.get(name, None)
+        if name == None:
+            raise Exception("Unnamed instance peripheral")
+
+        wrapper_pm.instance = cls(*args, **kwargs)
+        methods = [getattr(wrapper_pm.instance, x) for x in dir(
+            cls) if hasattr(getattr(cls, x), 'is_rx_handler')]
+        for m in methods:
+            key = 'Peripheral.%s.%s.%s' % (cls.__name__, name, m.__name__)
+            log.info("Adding method: %s" % key)
+            __rx_handlers__[key] = (cls, m)
+            if __rx_socket__ != None:
+                log.info("Subscribing to: %s" % key)
+                __rx_socket__.setsockopt(zmq.SUBSCRIBE, bytes(key))
+
+        return wrapper_pm.instance
+    return wrapper_pm
+
 
 def tx_msg(funct):
     '''
@@ -61,7 +93,13 @@ def tx_msg(funct):
         '''
         global __tx_socket__
         data = funct(model_cls, *args)
-        topic = "Peripheral.%s.%s" % (model_cls.__name__, funct.__name__)
+        
+        if hasattr(model_cls, 'hal_name'):
+            name = model_cls.name
+            topic = "Peripheral.%s.%s.%s" % (model_cls.__name__, name, funct.__name__)
+        else:
+            topic = "Peripheral.%s.%s" % (model_cls.__name__, funct.__name__)
+
         msg = encode_zmq_msg(topic, data)
         log.info("Sending: %s" % msg)
         __tx_socket__.send_string(msg)

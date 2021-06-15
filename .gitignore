@@ -13,3 +13,4 @@ __pycache__
 *.id0
 *.id1
 *.id2
+tmp/

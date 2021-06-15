@@ -12,6 +12,7 @@ import logging
 import os
 import time
 import sys
+from collections import OrderedDict
 from IPython import embed
 
 from avatar2 import Avatar, QemuTarget, TargetStates
@@ -27,11 +28,14 @@ from ..util.logging import *
 from .halucinator import *
 
 from ..bp_handlers import intercepts as intercepts
-from ..peripheral_models import generic as peripheral_emulators
+import ..mmiohandlers as mmiohandlers
 from ..peripheral_models import peripheral_server as periph_server
 from . import statistics as hal_stats
 
 
+def peripheral_resolve(peripheralname, memory):
+    cls = getattr(mmiohandlers, name)
+    return cls
 
 def setup_memory(avatar, name, memory, base_dir=None, record_memories=None):
     '''
@@ -56,7 +60,7 @@ def setup_memory(avatar, name, memory, base_dir=None, record_memories=None):
     # #TODO, just move this to models/bp_handlers but don't want break
     # all configs right now
     if 'emulate' in memory:
-        emulate = getattr(peripheral_emulators, memory['emulate'])
+        emulate = peripheral_resolve(name, memory)
     else:
         emulate = None
     log.info("Adding Memory: %s Addr: 0x%08x Size: 0x%08x" %
@@ -68,6 +72,54 @@ def setup_memory(avatar, name, memory, base_dir=None, record_memories=None):
     if record_memories is not None:
         if 'w' in permissions:
             record_memories.append((memory['base_addr'], memory['size']))
+
+
+def mmio_init(avatar, mmio_region, peripheral_list, base_dir):
+
+    mmio_base = int(mmio_region['base_addr'])
+    mmio_size = int(mmio_region['size'])
+    mmio_max  = mmio_base + mmio_size
+
+    mapped_memories = OrderedDict() 
+
+    for name, periph in peripheral_list:
+        base_addr = periph['base_addr']
+        region_size = periph['size']
+
+        ## Sanity check
+
+        if (base_addr < mmio_base) || (base_addr+region_size > mmio_max):
+            raise Exception("Requested memory map for 0x%08x + %d not contained in MMIO range %0x08x + %x", 
+                            base_addr, region_size,
+                            mmio_base, mmio_size)
+
+        if region_size == 0:
+            raise Exception("Memory map requested but size of map is 0.")
+
+        mapped_memories[base_addr] = region_size
+
+        setup_memory(avatar, name, periph, base_dir)
+
+    mapped_memories[mmio_max] = 0
+
+    last_rb = mmio_base
+    empty_name = "mmio_generic"
+
+    for base, size in mapped_memories:
+        #mmio: {base_addr: 0x40000000, size: 0x20000000, permissions: rw-}             
+        #led_left_inner: {base_addr: 0x40000038, size: 0x04, permissions: rw-, emulate: ?}  
+
+
+        empty_size = base - last_rb
+        if empty_size == 0:
+            continue
+       
+        # TODO: fix the generic peripheral part
+        empty_memory = {'base_addr': last_rb, 'size': empty_size, 
+                        permissions: 'rw-', emulate: 'GenericPeripheral'}
+
+        setup_memory(avatar, empty_name, empty_memory, base_dir) 
+
 
 # This can stay here:
 def emulator_init(config, architecture, name, entry_addr, firmware=None, log_basic_blocks=False,
@@ -217,6 +269,8 @@ def override_addresses(config, address_file):
 
     return base_addr, entry_addr
 
+
+
 def emulate_binary(config, base_dir, log_basic_blocks=None,
                    gdb_port=1234, elf_file=None, db_name=None, addressfile=None):
 
@@ -264,10 +318,16 @@ def emulate_binary(config, base_dir, log_basic_blocks=None,
             log.info("Removing Bitband")
             qemu.remove_bitband = True
 
-    # Setup Memo/bry Regions
+
+    mmio_region = None
+
+    # Setup Memory Regions
     record_memories = []
     for name, memory in list(config['memory_map'].items()):
-        setup_memory(avatar, name, memory, base_dir, record_memories)
+        if name == "mmio":
+            mmio_region == memory
+        else:
+            setup_memory(avatar, name, memory, base_dir, record_memories)
 
     # Add memory needed for returns
     architecture.avatarqemu.add_patch_memory(avatar)
@@ -286,10 +346,16 @@ def emulate_binary(config, base_dir, log_basic_blocks=None,
     # Setup Peripherals' Regions
     peripherallist = config.get('peripherals')
     if peripherallist != None:
-        peripherals = list(peripherallist.items())
-        for name, per in peripherals:
+        if mmio_region == None:
+            log.error("No MMIO region configured in memories. Please configure one.")
+            return
+
+        peripheral_list = list(peripherallist.items())
+        
+        mmio_init(avatar, mmio_region, peripheral_list, base_dir)
+        #for name, per in peripherals:
             # They are just memories
-            setup_peripheral(avatar, name, per, base_dir)
+            #setup_peripheral(avatar, name, per, base_dir)
     else:
         log.warn("No peripherals configured in config file.")
 
