@@ -321,8 +321,9 @@ def emulate_binary(config, base_dir, log_basic_blocks=None,
     for name, memory in list(config['memory_map'].items()):
         if name == "mmio":
             mmio_region = memory
-        else:
-            setup_memory(avatar, name, memory, base_dir, record_memories)
+            continue
+
+        setup_memory(avatar, name, memory, base_dir, record_memories)
 
     # Add memory needed for returns
     architecture.avatarqemu.add_patch_memory(avatar)
@@ -365,7 +366,7 @@ def emulate_binary(config, base_dir, log_basic_blocks=None,
             bp_cls = intercepts.get_bp_handler(intercept)
             
             if bp_cls == None:
-                log.error("Unable to find intercept class %s for %s" % (intercept["class"], intercept["functin"]))
+                log.error("Unable to find intercept class %s for %s" % (intercept["class"], intercept["function"]))
             
             if issubclass(bp_cls.__class__, AvatarPeripheral):
                 name, addr, size, per = bp_cls.get_mmio_info()

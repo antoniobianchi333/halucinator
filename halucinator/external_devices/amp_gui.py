@@ -197,7 +197,14 @@ def main(*args):
     io_server.start()
 
     dashboard.show()
-    app.exec_()
+    try:
+        app.exec_()
+    except KeyboardInterrupt as k:
+        pass
+    except Exception as e:
+        print("Exception occurred during execution")
+        print(e)
+
     io_server.shutdown()
     io_server.join()
 

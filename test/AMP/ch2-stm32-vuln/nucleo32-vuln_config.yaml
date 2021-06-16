@@ -1,6 +1,6 @@
 architecture: cortex-m3
-debug: false
-#qemu_debug: true
+debug: true
+qemu_debug: true
 intercepts:
 
 # ------------------------------- Base ------------------------------------

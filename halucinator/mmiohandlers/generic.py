@@ -47,6 +47,7 @@ class GenericPeripheral(AvatarPeripheral):
         self.write_handler[0:size] = self.hw_write
 
         log.info("Setting Handlers for 0x%08x = %s" % (address, str(self.read_handler[0:size])))
+        log.info("Setting Handlers for 0x%08x = %s" % (address, str(self.write_handler[0:size])))
 
 
 class HaltPeripheral(AvatarPeripheral):
