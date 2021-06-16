@@ -12,7 +12,7 @@ log = logging.getLogger("LEDDevice")
 class LEDDevice(object):
 
     handled_instances = []
-    self.vcallback
+    vcallback = None
 
     def __init__(self, ioserver, names, values_callback=None):
         self.ioserver = ioserver
@@ -20,7 +20,7 @@ class LEDDevice(object):
         handled_names = names
         for name in names:
             topic = 'Peripheral.MMIOLED.%s.write' % (name)
-            log.debug("Registering for ZMQ Topic:" % (topic))
+            log.debug("Registering for ZMQ Topic: %s" % (topic))
             self.ioserver.register_topic(
                 topic,
                 self.tx_handler)
