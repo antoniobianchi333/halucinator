@@ -25,6 +25,17 @@ led_names = {
 
 led_labels = ["Outer Left", "Inner Left", "Inner Right", "Outer Right"]
 
+leddevice = None
+candevice = None
+candata_reset = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
+candata_excessive = [0x00, 0x00, 0xFF, 0xFF, 0x0C, 0x00, 0x00, 0x00]
+candata_ok = [0x00, 0x00, 0x32, 0x32, 0x0C, 0x00, 0x00, 0x00]
+
+def can_msg(data):
+
+    idx = 0xFEF1 << 8
+    return (idx, data)
+
 class Dashboard(QDialog):
 
     ledchanged_signal = pyqtSignal(int, int)
@@ -66,15 +77,33 @@ class Dashboard(QDialog):
 
     @pyqtSlot()
     def excessivespeed_event(self):
+        data = candata_excessive
+        
         self.logui("CAN Command: Sending Brake, Excessive Speed")
+        self.logui("CAN RAW: %s" % str(data))
+
+        params = can_msg(data)
+        candevice.send_data_to_emulator(*params)
 
     @pyqtSlot()
     def normalspeed_event(self):
+        data = candata_ok
         self.logui("CAN Command: Sending Brake, Normal Speed")
+        self.logui("CAN RAW: %s" % str(data))
+        
+        params = can_msg(data)
+        candevice.send_data_to_emulator(*params)
+
 
     @pyqtSlot()
     def reset_event(self):
+        data = candata_reset
         self.logui("CAN Command: Sending Reset Brake")
+        self.logui("CAN RAW: %s" % str(data))
+        
+        params = can_msg(data)
+        candevice.send_data_to_emulator(*params)
+
 
     @pyqtSlot()
     def clearlog_event(self):
@@ -149,6 +178,9 @@ def ledchange(qtsignal, name, value):
 
 def main(*args):
 
+    global leddevice
+    global candevice
+
     app = QApplication(*args)
 
     dashboard = Dashboard()
@@ -158,7 +190,7 @@ def main(*args):
 
     io_server = IOServer(5556, 5555)
     leddevice = LEDDevice(io_server, list(led_names.keys()), ledevent)
-    canbus = CANBusDevice(io_server)
+    candevice = CANBusDevice(io_server)
 
     # Connect the signal to its slot.
     dashboard.ledchanged_signal.connect(dashboard.ledevent)
