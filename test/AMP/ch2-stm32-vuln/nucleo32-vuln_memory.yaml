@@ -4,13 +4,14 @@ memories:
   ram:  {base_addr: 0x20000000, size: 0x51000}
   mmio: {base_addr: 0x40000000, size: 0x20000000, permissions: rw-}
 peripherals:
-  led_left_outer: {base_addr: 0x40000034, size: 0x04, permissions: rw-, emulate: ?}
-  led_left_inner: {base_addr: 0x40000038, size: 0x04, permissions: rw-, emulate: ?}
+  led_left_outer: {base_addr: 0x40000034, size: 0x04, permissions: rw-, emulate: 'MMIOLedPeripheral'}
+  led_left_inner: {base_addr: 0x40000038, size: 0x04, permissions: rw-, emulate: 'MMIOLedPeripheral'}
 
-  led_right_inner: {base_addr: 0x40000040, size: 0x04, permissions: rw-, emulate: ?}
-  led_right_outer: {base_addr: 0x40002034, size: 0x04, permissions: rw-, emulate: ?}
+  led_right_inner: {base_addr: 0x40000040, size: 0x04, permissions: rw-, emulate: 'MMIOLedPeripheral'}
+  led_right_outer: {base_addr: 0x40002034, size: 0x04, permissions: rw-, emulate: 'MMIOLedPeripheral'}
 
 timers: [
   {name: "tim1", interrupt: 32},
   {name: "tim3", interrupt: 32},
   {name: "tim14", interrupt: 32},
+]

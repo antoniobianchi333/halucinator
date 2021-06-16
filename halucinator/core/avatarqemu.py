@@ -28,13 +28,13 @@ from ..util.logging import *
 from .halucinator import *
 
 from ..bp_handlers import intercepts as intercepts
-import ..mmiohandlers as mmiohandlers
+from .. import mmiohandlers as mmiohandlers
 from ..peripheral_models import peripheral_server as periph_server
 from . import statistics as hal_stats
 
 
 def peripheral_resolve(peripheralname, memory):
-    cls = getattr(mmiohandlers, name)
+    cls = getattr(mmiohandlers, memory['emulate'])
     return cls
 
 def setup_memory(avatar, name, memory, base_dir=None, record_memories=None):
@@ -88,7 +88,7 @@ def mmio_init(avatar, mmio_region, peripheral_list, base_dir):
 
         ## Sanity check
 
-        if (base_addr < mmio_base) || (base_addr+region_size > mmio_max):
+        if (base_addr < mmio_base) or (base_addr+region_size > mmio_max):
             raise Exception("Requested memory map for 0x%08x + %d not contained in MMIO range %0x08x + %x", 
                             base_addr, region_size,
                             mmio_base, mmio_size)
@@ -105,21 +105,16 @@ def mmio_init(avatar, mmio_region, peripheral_list, base_dir):
     last_rb = mmio_base
     empty_name = "mmio_generic"
 
-    for base, size in mapped_memories:
-        #mmio: {base_addr: 0x40000000, size: 0x20000000, permissions: rw-}             
-        #led_left_inner: {base_addr: 0x40000038, size: 0x04, permissions: rw-, emulate: ?}  
-
-
+    for base, size in mapped_memories.items():
         empty_size = base - last_rb
-        if empty_size == 0:
+        if empty_size == 0 or last_rb == base:
+            last_rb = base+size
             continue
-       
         # TODO: fix the generic peripheral part
-        empty_memory = {'base_addr': last_rb, 'size': empty_size, 
-                        permissions: 'rw-', emulate: 'GenericPeripheral'}
-
+        empty_memory = dict({'base_addr': last_rb, 'size': empty_size, 
+                             'permissions': 'rw-', 'emulate': 'GenericPeripheral'})
         setup_memory(avatar, empty_name, empty_memory, base_dir) 
-
+        last_rb = base+size
 
 # This can stay here:
 def emulator_init(config, architecture, name, entry_addr, firmware=None, log_basic_blocks=False,
@@ -325,7 +320,7 @@ def emulate_binary(config, base_dir, log_basic_blocks=None,
     record_memories = []
     for name, memory in list(config['memory_map'].items()):
         if name == "mmio":
-            mmio_region == memory
+            mmio_region = memory
         else:
             setup_memory(avatar, name, memory, base_dir, record_memories)
 

@@ -17,7 +17,7 @@ class MMIOLed(object):
     hal_size = 1
     hal_endianness = 'little'
 
-    def __init__(self, name='undefined', initial_value=0, max_size=1, endianness='little'):
+    def __init__(self, name='undefined', initial_value=0, max_size=1, endianness='little', **kwargs):
         if name == 'undefined':
             raise Exception("Peripheral is not named.")
         self.hal_name = name

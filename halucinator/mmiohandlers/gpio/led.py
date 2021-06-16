@@ -11,17 +11,16 @@ log = logging.getLogger("MMIO.LED")
 log.setLevel(logging.DEBUG)
 
 
-class GenericPeripheral(AvatarPeripheral, MMIOLed):
+class MMIOLedPeripheral(AvatarPeripheral, MMIOLed):
      
     def __init__(self, name, address, size, **kwargs):
         AvatarPeripheral.__init__(self, name, address, size)
-        MMIOLed.__init__()
+        MMIOLed.__init__(self, name=name, initial_value=0, max_size=size)
 
         self.read_handler[0:size] = self.hw_read
         self.write_handler[0:size] = self.hw_write
 
-        # TODO: why is 10 hardcoded here:
-        log.info("Setting Handlers %s" % str(self.read_handler[0:10]))
+        log.info("Setting Handlers for 0x%08x = %s" % (address, str(self.read_handler[0:size])))
 
     def hw_read(self, offset, size, pc=0xBAADBAAD):
         self.model_read(offset, size)
