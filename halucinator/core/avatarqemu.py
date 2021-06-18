@@ -328,17 +328,6 @@ def emulate_binary(config, base_dir, log_basic_blocks=None,
     # Add memory needed for returns
     architecture.avatarqemu.add_patch_memory(avatar)
 
-    # Add recorder to avatar
-    # Used for debugging peripherals
-    if elf_file is not None:
-        if db_name is None:
-            db_name = ".".join((os.path.splitext(elf_file)[
-                               0], str(target_name), "sqlite"))
-        avatar.recorder = State_Recorder(
-            db_name, qemu, record_memories, elf_file)
-    else:
-        avatar.recorder = None
-
     # Setup Peripherals' Regions
     peripherallist = config.get('peripherals')
     if peripherallist != None:
@@ -354,6 +343,17 @@ def emulate_binary(config, base_dir, log_basic_blocks=None,
             #setup_peripheral(avatar, name, per, base_dir)
     else:
         log.warn("No peripherals configured in config file.")
+    
+    # Add recorder to avatar
+    # Used for debugging peripherals
+    if elf_file is not None:
+        if db_name is None:
+            db_name = ".".join((os.path.splitext(elf_file)[
+                               0], str(target_name), "sqlite"))
+        avatar.recorder = State_Recorder(
+            db_name, qemu, record_memories, elf_file)
+    else:
+        avatar.recorder = None
 
     # Setup Intercept MMIO Regions
     added_classes = []
