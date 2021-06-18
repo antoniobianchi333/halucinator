@@ -23,9 +23,13 @@ class MMIOLedPeripheral(AvatarPeripheral, MMIOLed):
         log.info("Setting Handlers for 0x%08x = %s" % (address, str(self.read_handler[0:size])))
         log.info("Setting Handlers for 0x%08x = %s" % (address, str(self.write_handler[0:size])))
 
+
+    def __name__(self):
+        return 'MMIOLEDPeripheral'
+
     def hw_read(self, offset, size, pc=0xBAADBAAD):
         log.info("READ %s %d+%d", self.hal_name, offset, size)
-        self.model_read(offset, size)
+        ret = self.model_read(offset, size)
         return ret
 
     def hw_write(self, offset, size, value, pc=0xBAADBAAD):

@@ -17,7 +17,7 @@ class MMIOLed(object):
     hal_size = 1
     hal_endianness = 'little'
 
-    def __init__(self, name='undefined', initial_value=0, max_size=1, endianness='little', **kwargs):
+    def __init__(self, name='undefined', initial_value=1, max_size=1, endianness='little', **kwargs):
         if name == 'undefined':
             raise Exception("Peripheral is not named.")
         self.hal_name = name
@@ -25,7 +25,7 @@ class MMIOLed(object):
         self.hal_size = max_size
 
     @peripheral_server.tx_msg
-    def model_write(self, offset, value, size):
+    def model_write(self, offset, size, value):
         '''
             Creates the message that peripheral_server.tx_msg will send on this 
             event
@@ -35,8 +35,11 @@ class MMIOLed(object):
         if size > self.hal_size - offset:
             raise Exception("OOB Write")
 
-        self.hal_value = (int.from_bytes(value, self.endianness)) << offset
-        msg = {name: self.hal_name, value: self.hal_value}
+        log.debug("MMIOLED.Write Past parameters")
+        tvalue = int.from_bytes(value, self.hal_endianness)
+        self.hal_value = tvalue << offset
+        log.debug("MMIOLED.Write %s" % (self.hal_value))
+        msg = {'name': self.hal_name, 'value': int(self.hal_value)}
         log.debug("MMIOLED.Write " + repr(msg))
         return msg
 
@@ -56,5 +59,5 @@ class MMIOLed(object):
             raise Exception("Avatar Bug")
         if size > self.hal_size - offset:
             raise Exception("OOB Read")
-        valueasbytes = self.value.to_bytes(max_size, endianness)
+        valueasbytes = self.hal_value.to_bytes(self.hal_size, self.hal_endianness)
         return valueasbytes[offset:size]

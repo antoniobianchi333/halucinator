@@ -37,7 +37,7 @@ def peripheral_resolve(peripheralname, memory):
     cls = getattr(mmiohandlers, memory['emulate'])
     return cls
 
-def setup_memory(avatar, name, memory, base_dir=None, record_memories=None):
+def setup_memory(avatar, name, memory, base_dir=None, record_memories=None, hal_ranges=None):
     '''
         Sets up memory regions for the emualted devices
         Args:
@@ -67,7 +67,8 @@ def setup_memory(avatar, name, memory, base_dir=None, record_memories=None):
              (name, memory['base_addr'], memory['size']))
     avatar.add_memory_range(memory['base_addr'], memory['size'],
                             name=name, file=filename,
-                            permissions=permissions, emulate=emulate)
+                            permissions=permissions, emulate=emulate,
+                            hal_ranges=hal_ranges)
 
     if record_memories is not None:
         if 'w' in permissions:
@@ -81,6 +82,8 @@ def mmio_init(avatar, mmio_region, peripheral_list, base_dir):
     mmio_max  = mmio_base + mmio_size
 
     mapped_memories = OrderedDict() 
+
+    ranges = list()
 
     for name, periph in peripheral_list:
         base_addr = periph['base_addr']
@@ -97,8 +100,13 @@ def mmio_init(avatar, mmio_region, peripheral_list, base_dir):
             raise Exception("Memory map requested but size of map is 0.")
 
         mapped_memories[base_addr] = region_size
-
-        setup_memory(avatar, name, periph, base_dir)
+        #setup_memory(avatar, name, periph, base_dir)
+        
+        extent = dict()
+        extent['offset'] = base_addr
+        extent['size'] = region_size
+        extent['action'] = 'model'
+        ranges.append(extent)
 
     mapped_memories[mmio_max] = 0
 
@@ -111,10 +119,20 @@ def mmio_init(avatar, mmio_region, peripheral_list, base_dir):
             last_rb = base+size
             continue
         # TODO: fix the generic peripheral part
-        empty_memory = dict({'base_addr': last_rb, 'size': empty_size, 
-                             'permissions': 'rw-', 'emulate': 'GenericPeripheral'})
-        setup_memory(avatar, empty_name, empty_memory, base_dir) 
+        #empty_memory = dict({'base_addr': last_rb, 'size': empty_size, 
+        #                     'permissions': 'rw-', 'emulate': 'GenericPeripheral'})
+
+        extent = dict()
+        extent['offset'] = last_rb
+        extent['size'] = empty_size
+        extent['action'] = 'log'
+        ranges.append(extent)
         last_rb = base+size
+    
+    mmio_range = dict({'base_addr': last_rb, 'size': empty_size, 
+                        'permissions': 'rw-', 'emulate': 'MMIOPeripheral'})
+
+    setup_memory(avatar, 'mmio', mmio_range, base_dir, hal_ranges=ranges) 
 
 # This can stay here:
 def emulator_init(config, architecture, name, entry_addr, firmware=None, log_basic_blocks=False,
