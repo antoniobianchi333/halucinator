@@ -1,6 +1,5 @@
 architecture: cortex-m3
 debug: false
-#qemu_debug: true
 intercepts:
 
 # ------------------------------- Base ------------------------------------
@@ -63,9 +62,8 @@ intercepts:
 - class: halucinator.bp_handlers.stm32f4.stm32f4_can.STM32_CAN 
   function: HAL_CAN_GetRxFifoFillLevel
 
-- class: halucinator.bp_handlers.stm32f4.stm32f4_amp.STM32_AMP
-  function: _Z16rx_brake_routinePhP6Bumper
-
 - class: halucinator.bp_handlers.generic.armv7m_param_log.ARMv7MEABILogger
   function: HAL_GPIO_TogglePin
 
+- class: halucinator.bp_handlers.stm32f4.stm32f4_amp.STM32_AMP
+  function: _Z16rx_brake_routinePhP6Bumper

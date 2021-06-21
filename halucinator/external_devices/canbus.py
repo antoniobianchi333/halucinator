@@ -3,11 +3,49 @@ from collections import deque, defaultdict
 import logging
 import cmd2
 import zmq
+import json
 from ..peripheral_models.peripheral_server import encode_zmq_msg, decode_zmq_msg
 from .ioserver import IOServer
 
 log = logging.getLogger("CanServer")
 log.setLevel(logging.DEBUG)
+
+def symbolic_exec_parse(s):
+
+    if s[0] != "[" or s[-1:] != "]":
+        return (None, 'Symbolic exec output should be surrounded by []')
+
+    s_inner = s[1:-1]
+    elements = s_inner.replace(" ","").split(",")
+
+    results = list()
+
+    for element in elements:
+        element = element.replace("'", "")
+        if element == '?':
+            results.append(None)
+            continue
+
+        try:
+            eint = int(element)
+        except ValueError:
+            return (None, 'Symbolic execution must output data [a,b,c,d] where each element is a numeric value, or ?')
+
+        results.append(eint)
+
+    return (results, '')
+
+class AMP(object):
+
+    def __init__(self, ioserver):
+        self.ioserver = ioserver
+
+    def set_rxbrake_routine_r1(self, values):
+        
+        d = {'data': values}
+        self.ioserver.send_msg('Peripheral.AMP.rx_data', d)
+
+
 
 class CANBusDevice(object):
 
@@ -66,14 +104,11 @@ class CANBusDevice(object):
 class CanShell(cmd2.Cmd):
     intro = 'CAN Device Emulator for AMP'
     prompt = '[CAN] '
-    candev = None
 
-
-
-    def __init__(self, candev, *args, **kwargs):
-
+    def __init__(self, candev, ampdev, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.candev = candev
+        self.ampdev = ampdev
         self.hidden_commands.append('EOF')
 
     def __parse__(arg):
@@ -141,6 +176,41 @@ class CanShell(cmd2.Cmd):
 
         self.candev.send_data_to_emulator(idx, data)
 
+
+    def do_amp_symbolic(self, args):
+        'Send input from symbolic execution'
+
+        argv = args.argv
+        if len(argv) != 3:
+            print("Please supply two arguments: canbus data frame and value for second argument")
+            return
+
+        canframe_s = argv[1]
+        dashboard_s = argv[2]
+
+        canframe_parsed, err = symbolic_exec_parse(canframe_s)
+        if canframe_parsed == None:
+            print(err)
+            return
+
+        if len(canframe_parsed) > 8:
+            print('CANBus Data Frames are limited to 8 bytes')
+            return
+    
+        canframe_data = list(map(lambda x: x if x!=None else 0, canframe_parsed))
+        while len(canframe_data) < 8:
+            canframe_data.append(0)
+        
+        # canframe data is now valid, next option.
+        r1vframe_parsed, err = symbolic_exec_parse(dashboard_s)
+        if r1vframe_parsed == None:
+            print(err)
+            return
+
+        idx = 0xFEF1 << 8
+        self.ampdev.set_rxbrake_routine_r1(r1vframe_parsed)
+        self.candev.send_data_to_emulator(idx, canframe_data)
+        
     def do_exit(self, args):
         'Exit the virtual CAN device'
         return True
@@ -166,11 +236,11 @@ def main(*args):
     io_server = IOServer(5556, 5555)
     #io_server = IOServer(args.rx_port, args.tx_port)
     canbus = CANBusDevice(io_server)
-
+    ampdev = AMP(io_server)
     io_server.start()
 
     try:
-        CanShell(canbus).cmdloop()
+        CanShell(canbus, ampdev).cmdloop()
     except KeyboardInterrupt:
         pass
     print("")
