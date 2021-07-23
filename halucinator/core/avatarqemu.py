@@ -27,7 +27,7 @@ from ..util.logging import *
 from .halucinator import *
 
 from ..bp_handlers import intercepts as intercepts
-from ..peripheral_models import generic as peripheral_emulators
+from ..peripheral_models import generic_amp as peripheral_emulators
 from ..peripheral_models import peripheral_server as periph_server
 from . import statistics as hal_stats
 

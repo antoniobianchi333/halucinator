@@ -77,6 +77,10 @@ def reg_rx_handler(funct):
     return funct
 
 
+def zmq_encode_and_send(topic, msg):
+    encoded_payload = encode_zmq_msg(topic, msg)
+    __tx_socket__.send_string(encoded_payload)
+
 def encode_zmq_msg(topic, msg):
     data_yaml = yaml.safe_dump(msg)
     return "%s %s" % (topic, data_yaml)

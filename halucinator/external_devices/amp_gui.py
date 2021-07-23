@@ -1,8 +1,9 @@
 import signal
 import sys
 import functools
+import shlex
 
-from halucinator.external_devices.canbus import CANBusDevice
+from halucinator.external_devices.canbus import CANBusDevice, AMP, symbolic_exec_parse
 from halucinator.external_devices.MMIOLED import LEDDevice
 from halucinator.external_devices.ioserver import IOServer
 
@@ -12,7 +13,8 @@ from PyQt5.QtWidgets import (QApplication, QCheckBox, QComboBox, QDateTimeEdit,
         QProgressBar, QPushButton, QRadioButton, QScrollBar, QSizePolicy,
         QSlider, QSpinBox, QStyleFactory, QTableWidget, QTabWidget,
         QPlainTextEdit, QTextEdit,
-        QVBoxLayout, QWidget)
+        QVBoxLayout, QWidget, QMessageBox)
+from PyQt5.QtGui import QIcon, QPixmap
 from qasync import QEventLoop
 
 led_names = {
@@ -24,6 +26,7 @@ led_names = {
 
 led_labels = ["Outer Left", "Inner Left", "Inner Right", "Outer Right"]
 
+ampdevice = None
 leddevice = None
 candevice = None
 candata_reset = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
@@ -46,11 +49,13 @@ class Dashboard(QDialog):
 
         self._createledpanel()
         self._createbtnpanel()
+        self._createsymbolicpanel()
         self._createlogpanel()
         layout_main = QGridLayout()
         layout_main.addWidget(self.groupbox_left, 0,0)
         layout_main.addWidget(self.groupbox_right, 0,1)
-        layout_main.addWidget(self.groupbox_left_lower, 1,0)
+        layout_main.addWidget(self.groupbox_symbolic, 1,0)
+        layout_main.addWidget(self.groupbox_left_lower, 2,0)
         self.setLayout(layout_main)
         self.setWindowTitle("AMP HALucinator Demo")
 
@@ -61,18 +66,22 @@ class Dashboard(QDialog):
     def ledevent(self, idx, value):
 
         ledqlabel = self._ledmap[idx]
+        ledgraphic = self._ledmapg[idx]
         ledname = led_labels[idx]
 
-        self.logui("LED Change Event: LED %s Value %d", ledname, value)
+        self.logui("LED Change Event: LED %s Value %d" % (ledname, value))
 
         vlabel = "Off"
         if value > 10:
             vlabel = "On"
+            ico = self.pixmap_ledon
         else:
             vlabel = "Off"
+            ico = self.pixmap_ledoff
 
         lstr = "%s: %s (%d)" % (ledname, vlabel, value)
-        ledqlabel.setWindowTitle(lstr)
+        ledqlabel.setText(lstr)
+        ledgraphic.setPixmap(ico)
 
     @pyqtSlot()
     def excessivespeed_event(self):
@@ -105,14 +114,84 @@ class Dashboard(QDialog):
 
 
     @pyqtSlot()
+    def send_symbolic(self):
+        data = self.txtEntry.text()
+         
+        def invalid_input(message):
+            msg = QMessageBox()
+            msg.setIcon(QMessageBox.Warning)
+            msg.setText(message)
+            msg.setWindowTitle("AMP Halucinator DEMO")
+            msg.exec_()
+            return
+        
+
+        try:
+            canframe_s, dashboard_s = shlex.split(data)
+        except ValueError:
+            invalid_input("Please provide two inputs from symbolic execution: the CAN message frame and constraints for register r1")
+            return
+
+        canframe_parsed, err = symbolic_exec_parse(canframe_s)
+        if canframe_parsed == None:
+            invalid_input(err)
+            return
+
+        if len(canframe_parsed) > 8:
+            invalid_input('CANBus Data Frames are limited to 8 bytes')
+            return
+    
+        canframe_data = list(map(lambda x: x if x!=None else 0, canframe_parsed))
+        while len(canframe_data) < 8:
+            canframe_data.append(0)
+        
+        # canframe data is now valid, next option.
+        r1vframe_parsed, err = symbolic_exec_parse(dashboard_s)
+        if r1vframe_parsed == None:
+            invalid_input(err)
+            return
+
+        self.logui("SYMBOLIC Command: Sending")
+        self.logui("CAN RAW: %s" % str(canframe_data))
+        self.logui("R1-V RAW: %s" % str(r1vframe_parsed))
+        self.txtEntry.setText("")
+
+        idx = 0xFEF1 << 8
+        ampdevice.set_rxbrake_routine_r1(r1vframe_parsed)
+        candevice.send_data_to_emulator(idx, canframe_data)
+        return
+
+    @pyqtSlot()
     def clearlog_event(self):
         self.logtext.clear()
 
     def _createledpanel(self):
 
+        self.pixmap_ledon = QPixmap('res/ledred_on.png')
+        self.pixmap_ledoff = QPixmap('res/ledred_off.png')
+
         self._ledmap = dict()
+        self._ledmapg = dict()
 
         self.groupbox_left = QGroupBox("LED Panel")
+
+
+        self.led_g_ol = QLabel()
+        self.led_g_ol.setPixmap(self.pixmap_ledoff)
+        self.led_g_ol.setFixedSize(100, 100)
+        self.led_g_ol.setScaledContents(True);
+        self.led_g_il = QLabel()
+        self.led_g_il.setPixmap(self.pixmap_ledoff)
+        self.led_g_il.setFixedSize(100, 100)
+        self.led_g_il.setScaledContents(True);
+        self.led_g_ir = QLabel()
+        self.led_g_ir.setPixmap(self.pixmap_ledoff)
+        self.led_g_ir.setFixedSize(100, 100)
+        self.led_g_ir.setScaledContents(True);
+        self.led_g_or = QLabel()
+        self.led_g_or.setPixmap(self.pixmap_ledoff)
+        self.led_g_or.setFixedSize(100, 100)
+        self.led_g_or.setScaledContents(True);
 
         self.led_ol = QLabel("Outer Left: Off (1)")
         self.led_il = QLabel("Inner Left: Off (1)")
@@ -123,16 +202,22 @@ class Dashboard(QDialog):
         self._ledmap[1] = self.led_il
         self._ledmap[2] = self.led_ir
         self._ledmap[3] = self.led_or
+        
+        self._ledmapg[0] = self.led_g_ol
+        self._ledmapg[1] = self.led_g_il
+        self._ledmapg[2] = self.led_g_ir
+        self._ledmapg[3] = self.led_g_or
 
-        layout = QHBoxLayout()
-        layout.addWidget(self.led_ol)
-        layout.addWidget(self.led_il)
-        layout.addWidget(self.led_ir)
-        layout.addWidget(self.led_or)
-
-        layout.addStretch(1)
-        self.groupbox_left.setLayout(layout)
-
+        layout_all = QGridLayout()
+        layout_all.addWidget(self.led_g_ol, 0, 0)
+        layout_all.addWidget(self.led_g_il, 0, 1)
+        layout_all.addWidget(self.led_g_ir, 0, 2)
+        layout_all.addWidget(self.led_g_or, 0, 3)
+        layout_all.addWidget(self.led_ol, 1, 0)
+        layout_all.addWidget(self.led_il, 1, 1)
+        layout_all.addWidget(self.led_ir, 1, 2)
+        layout_all.addWidget(self.led_or, 1, 3)
+        self.groupbox_left.setLayout(layout_all)
 
     def _createbtnpanel(self):
 
@@ -161,6 +246,16 @@ class Dashboard(QDialog):
         layout.addStretch(1)
         self.groupbox_right.setLayout(layout)
    
+    def _createsymbolicpanel(self):
+        self.groupbox_symbolic = QGroupBox("Symbolic Execution Input")
+        self.txtEntry = QLineEdit("")
+        self.btnSendSymbolic = QPushButton("Send Symbolic Input")
+        self.btnSendSymbolic.clicked.connect(self.send_symbolic)
+        layout = QHBoxLayout()
+        layout.addWidget(self.txtEntry, 4)
+        layout.addWidget(self.btnSendSymbolic, 1)
+        self.groupbox_symbolic.setLayout(layout)
+
     def _createlogpanel(self):
 
         self.groupbox_left_lower = QGroupBox("Event Log")
@@ -173,10 +268,11 @@ class Dashboard(QDialog):
 
 def ledchange(qtsignal, name, value):
     idx = led_names[name]
-    qtsignal(idx, value)
+    qtsignal.emit(idx, value)
 
 def main(*args):
 
+    global ampdevice
     global leddevice
     global candevice
 
@@ -188,8 +284,11 @@ def main(*args):
     ledevent = functools.partial(ledchange, dashboard.ledchanged_signal)
 
     io_server = IOServer(5556, 5555)
+    ampdevice = AMP(io_server)
     leddevice = LEDDevice(io_server, list(led_names.keys()), ledevent)
     candevice = CANBusDevice(io_server)
+
+
 
     # Connect the signal to its slot.
     dashboard.ledchanged_signal.connect(dashboard.ledevent)
