@@ -13,25 +13,28 @@ for earlier demonstrations, you will need all three components.
 ## Acquiring the source
 
  - Clone the avatar-qemu tree and switch to the devel branch.
+```
+git clone https://github.com/HexHive/avatar-qemu
+cd avatar-qemu
+git checkout devel
+cd ..
+```
 
-   git clone https://github.com/HexHive/avatar-qemu
-   cd avatar-qemu
-   git checkout devel
-   cd ..
-
- - Clone the avatar tree
-
-   git clone https://github.com/HexHive/avatar2
-   cd avatar2
-   git checkout devel
-   cd ..
+- Clone the avatar tree
+```
+git clone https://github.com/HexHive/avatar2
+cd avatar2
+git checkout devel
+cd ..
+```
 
  - Finally, clone the HALucinator tree.
-   
-   git clone https://github.com/HexHive/halucinator/
-   cd halucinator
-   git checkout av/amp_demo
-   cd ..
+```   
+git clone https://github.com/HexHive/halucinator/
+cd halucinator
+git checkout av/amp_demo
+cd ..
+```
 
 ## Build Avatar-Qemu
 
