@@ -188,9 +188,9 @@ are two requirements to fulfil here:
 
     You will need to convert the ELF file to a binary using the following 
     command:
-
+    ```
     objcopy -O binary nucleo32-vuln.elf nucleo32-vuln.elf.bin
-
+    ```
     Repeat this exercise for any other binaries being tested, in their 
     respective folders.
  2. The `_memories` file describes where to find these binaries. Ensure that 
