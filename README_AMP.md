@@ -199,8 +199,10 @@ are two requirements to fulfil here:
     ```
     memories:
       alias: {base_addr: 0x0, file: nucleo32-vuln.elf.bin,
-    permissions: r-x, size: 0x800000}
+        permissions: r-x, size: 0x800000}
       flash: {base_addr: 0x8000000, file: nucleo32-vuln.elf.bin,
+        permissions: r-x, size: 0x200000}
+    ```
 
 Caveats:
 
